@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>MAX BERGGREN</title>
+    <description>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.
+</description>
+    <link>http://maxberggren.com/</link>
+    <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Mon, 24 Nov 2014 20:03:35 +0100</pubDate>
+    <lastBuildDate>Mon, 24 Nov 2014 20:03:35 +0100</lastBuildDate>
+    <generator>Jekyll v2.5.1</generator>
+    
+      <item>
+        <title>AppleScript running Ipython Notebooks trough double click</title>
+        <description>&lt;p&gt;Here’s some AppleScript magic to have &lt;code&gt;.ipnb&lt;/code&gt;-files runnable with a double click, like they should.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Fire up &lt;code&gt;AppleScript Editor&lt;/code&gt; (found in &lt;code&gt;/Applications/Utilities/&lt;/code&gt;) and paste the following code:&lt;/p&gt;
+
+    &lt;pre&gt;&lt;code&gt; on run
+ 	set startPath to &quot;&quot; --change to your prefered path, mine was /Users/max/Dropbox/Dokument/Python
+ 	tell application &quot;Terminal&quot;
+ 		activate
+ 		do script with command &quot;cd &quot; &amp;amp; startPath &amp;amp; &quot; &amp;amp;&amp;amp; ipython notebook&quot;
+ 	end tell
+ end run
+
+ on open the_files
+ 	repeat with i from 1 to the count of the_files
+ 		tell application &quot;Finder&quot;
+ 			set p to POSIX path of (item i of the_files)
+ 		end tell
+ 		tell application &quot;Terminal&quot;
+ 			activate
+ 			do script with command &quot;ipython notebook &quot; &amp;amp; p
+ 		end tell
+ 	end repeat
+ end open
+&lt;/code&gt;&lt;/pre&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Save as a &lt;code&gt;program&lt;/code&gt; preferably in your &lt;code&gt;/Applications/&lt;/code&gt; folder.&lt;/li&gt;
+  &lt;li&gt;Press &lt;code&gt;Cmd+i&lt;/code&gt; on any &lt;code&gt;.ipnb&lt;/code&gt;-file. &lt;/li&gt;
+  &lt;li&gt;Under &lt;code&gt;Open with&lt;/code&gt; select your created program.&lt;/li&gt;
+  &lt;li&gt;Press &lt;code&gt;Change all...&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;Profit!?!?&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable &lt;code&gt;setPath&lt;/code&gt; to something like &lt;code&gt;/Users/max/Dropbox/Dokument/Python&lt;/code&gt; so you’re at your prefered path right from the start.&lt;/p&gt;
+</description>
+        <pubDate>Mon, 24 Nov 2014 21:29:50 +0100</pubDate>
+        <link>http://maxberggren.com/applescript/2014/11/24/applescript-ipnb.html</link>
+        <guid isPermaLink="true">http://maxberggren.com/applescript/2014/11/24/applescript-ipnb.html</guid>
+        
+        
+        <category>applescript</category>
+        
+      </item>
+    
+      <item>
+        <title>Aerodynamic Optimization of a Wind Turbine Using a Genetic Algorithm, Blade Element Momentum Theory and Xfoil</title>
+        <description>&lt;p&gt;What if wind turbines could reproduce (yes, feel free to picture it you perv)? Maybe then evolution would create a superbreed of wind turbines outperforming the ones we have today.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/seed.png&quot; alt=&quot;Seed of randomized airfoils&quot; title=&quot;Seed of randomized airfoils&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;figure-1-a-part-of-the-initial-seed-of-randomized-airfoils&quot;&gt;Figure 1: A part of the initial seed of randomized airfoils&lt;/h6&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/optimized.png&quot; alt=&quot;Optimized airfoil&quot; title=&quot;Optimized airfoil&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;figure-2-the-final-airfoil-that-showed-15--better-results&quot;&gt;Figure 2: The final airfoil that showed 15 % better results&lt;/h6&gt;
+
+&lt;p&gt;That was the general idea of my bachelor’s thesis, and I actually got some promising results. To investigate this, I developed an implementation of the &lt;a href=&quot;http://en.wikipedia.org/wiki/Blade_element_momentum_theory&quot;&gt;blade element momentum theory&lt;/a&gt; in Python - integrating it with the open source software &lt;a href=&quot;http://web.mit.edu/drela/Public/web/xfoil/&quot;&gt;Xfoil&lt;/a&gt;. This enabled for an genetic algorithm to be used in producing a new wind turbine rotor blade with efficiency gains up to 15 % for an arbitrary wind site.&lt;/p&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://github.com/maxberggren/SiteOpt&quot;&gt;code&lt;/a&gt; is on GitHub and so is the &lt;a href=&quot;https://github.com/maxberggren/Bachelor-Thesis&quot;&gt;thesis&lt;/a&gt;. Unfortionally only in Swedish, but here’s the English abstract:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;This study presents a methodology that enables the annual average power of a wind turbine to be increased by automatically optimizing it’s airfoil, twist and chord distribution. As a part of the study the software SiteOpt has been developed. This software connects the open source software XFOIL with the blade element momentum theory. XFOIL gives lift and drag coefficients which enable the blade element momentum theory to predict the power of a wind turbine at different wind and rotational speeds. An optimization algorithm of the type genetic algorithms is used to develop a new rotor blade. An academic benchmark case (Unsteady Aerodynamics Experiment Phase III) was selected as a starting point of the optimization because wind tunnel data was available for that campain. With the geometry developed by the genetic algoritm a theoretical increase of  15 % more power could be extracted. However, it has been shown that the model has shortcomings at high wind speeds where the predicted power does not match wind tunnel data. This is thought to be related to that the model assumes a completely rigid blade. In real world applications a rotorblade will bend on higher wind speeds (about 8 m/s). It is therefore concluded that the model in its current form is flawed and that future work should aim to take these effects into account. However, a wind histogram for a specific location was used in order to calculate the annual average power for the wind turbine. The wind histogram used in this study to obtain the results has it’s wind speeds 81 % before 10 m/s where the model is acceptable. Therefore the results are largely to be considered accurate. &lt;/p&gt;
+&lt;/blockquote&gt;
+</description>
+        <pubDate>Sun, 24 Aug 2014 18:39:50 +0200</pubDate>
+        <link>http://maxberggren.com/academic/2014/08/24/bachelors-thesis.html</link>
+        <guid isPermaLink="true">http://maxberggren.com/academic/2014/08/24/bachelors-thesis.html</guid>
+        
+        
+        <category>academic</category>
+        
+      </item>
+    
+  </channel>
+</rss>
