@@ -6,8 +6,8 @@
 </description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Mon, 24 Nov 2014 20:03:35 +0100</pubDate>
-    <lastBuildDate>Mon, 24 Nov 2014 20:03:35 +0100</lastBuildDate>
+    <pubDate>Mon, 24 Nov 2014 20:40:36 +0100</pubDate>
+    <lastBuildDate>Mon, 24 Nov 2014 20:40:36 +0100</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
@@ -47,6 +47,23 @@
 &lt;/ol&gt;
 
 &lt;p&gt;They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable &lt;code&gt;setPath&lt;/code&gt; to something like &lt;code&gt;/Users/max/Dropbox/Dokument/Python&lt;/code&gt; so you’re at your prefered path right from the start.&lt;/p&gt;
+
+&lt;p&gt;And while we’re at it, here’s some code for a drag and drop AppleScript converting &lt;code&gt;.ipnb&lt;/code&gt; to markdown &lt;code&gt;.md&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;on open the_files
+   repeat with i from 1 to the count of the_files
+   	tell application &quot;Finder&quot;
+   		set filePath to POSIX path of (item i of the_files)
+   	end tell
+   	tell application &quot;Terminal&quot;
+   		activate
+   		set parentFolder to POSIX path of ((the_files as text) &amp;amp; &quot;::&quot;)
+   		do script with command &quot;cd &quot; &amp;amp; parentFolder &amp;amp; &quot; &amp;amp;&amp;amp; ipython nbconvert --to markdown &quot; &amp;amp; filePath
+   	end tell
+	end repeat
+end open
+&lt;/code&gt;&lt;/pre&gt;
+
 </description>
         <pubDate>Mon, 24 Nov 2014 21:29:50 +0100</pubDate>
         <link>http://maxberggren.com/applescript/2014/11/24/applescript-ipnb.html</link>

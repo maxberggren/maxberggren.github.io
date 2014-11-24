@@ -120,6 +120,23 @@
 
 <p>They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable <code>setPath</code> to something like <code>/Users/max/Dropbox/Dokument/Python</code> so you’re at your prefered path right from the start.</p>
 
+<p>And while we’re at it, here’s some code for a drag and drop AppleScript converting <code>.ipnb</code> to markdown <code>.md</code>:</p>
+
+<pre><code>on open the_files
+   repeat with i from 1 to the count of the_files
+   	tell application "Finder"
+   		set filePath to POSIX path of (item i of the_files)
+   	end tell
+   	tell application "Terminal"
+   		activate
+   		set parentFolder to POSIX path of ((the_files as text) &amp; "::")
+   		do script with command "cd " &amp; parentFolder &amp; " &amp;&amp; ipython nbconvert --to markdown " &amp; filePath
+   	end tell
+	end repeat
+end open
+</code></pre>
+
+
   </article>
 
 </div>
