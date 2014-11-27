@@ -6,8 +6,8 @@
 </description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 27 Nov 2014 19:54:53 +0100</pubDate>
-    <lastBuildDate>Thu, 27 Nov 2014 19:54:53 +0100</lastBuildDate>
+    <pubDate>Thu, 27 Nov 2014 20:03:04 +0100</pubDate>
+    <lastBuildDate>Thu, 27 Nov 2014 20:03:04 +0100</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
@@ -268,9 +268,9 @@ Python&lt;/a&gt; by
 real numerical methods that should be used instead of the simple one in this
 post.&lt;/p&gt;
 </description>
-        <pubDate>Mon, 24 Nov 2014 21:29:50 +0100</pubDate>
-        <link>http://maxberggren.com/2014/11/24/model-of-a-zombie-outbreak/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2014/11/24/model-of-a-zombie-outbreak/</guid>
+        <pubDate>Thu, 27 Nov 2014 21:02:50 +0100</pubDate>
+        <link>http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</guid>
         
         <category>numerics</category>
         
