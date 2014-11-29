@@ -6,12 +6,12 @@
 </description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 27 Nov 2014 20:03:04 +0100</pubDate>
-    <lastBuildDate>Thu, 27 Nov 2014 20:03:04 +0100</lastBuildDate>
+    <pubDate>Sat, 29 Nov 2014 20:52:04 +0100</pubDate>
+    <lastBuildDate>Sat, 29 Nov 2014 20:52:04 +0100</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
-        <title>Model of a zombie outbreak in Sweden, Norway and Finland (Dennmark is fine)</title>
+        <title>Model of a zombie outbreak in Sweden, Norway and Finland (Denmark is fine)</title>
         <description>&lt;p&gt;&lt;img src=&quot;/assets/outbreak.gif&quot; alt=&quot;alt text&quot; title=&quot;Title&quot; /&gt;&lt;/p&gt;
 
 &lt;h6 id=&quot;the-spread-of-infection-as-a-gif-even-the-finns-will-succumb&quot;&gt;The spread of infection as a gif. Even the Finns will succumb.&lt;/h6&gt;
@@ -185,7 +185,7 @@ imgplot.set_interpolation(&#39;nearest&#39;)
 
 &lt;p&gt;&lt;img src=&quot;/assets/SweEbola_16_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
-&lt;h6 id=&quot;population-density-in-the-nordic-countries-dennmark-is-missing&quot;&gt;Population density in the Nordic countries (Dennmark is missing)&lt;/h6&gt;
+&lt;h6 id=&quot;population-density-in-the-nordic-countries-denmark-is-missing&quot;&gt;Population density in the Nordic countries (Denmark is missing)&lt;/h6&gt;
 
 &lt;p&gt;Our $S$ matrix, the susceptible individuals should be something like the
 population density. The infected $I$ is for now just zeros. But let’s put a
@@ -258,7 +258,7 @@ plt.clf()
 &lt;h6 id=&quot;the-spread-of-infection-as-a-gif-even-the-finns-will-succumb-1&quot;&gt;The spread of infection as a gif. Even the Finns will succumb.&lt;/h6&gt;
 
 &lt;p&gt;Look at that! The only safe place seem to be in the northern parts where it’s
-not so densly populated. Even Finnland will at the end of the animation be
+not so densly populated. Even Finland will at the end of the animation be
 infected. Now you know.&lt;/p&gt;
 
 &lt;p&gt;If you want to know more about solving differential equations I can warmly
