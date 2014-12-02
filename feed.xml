@@ -6,8 +6,8 @@
 </description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sat, 29 Nov 2014 20:52:04 +0100</pubDate>
-    <lastBuildDate>Sat, 29 Nov 2014 20:52:04 +0100</lastBuildDate>
+    <pubDate>Tue, 02 Dec 2014 06:39:01 +0100</pubDate>
+    <lastBuildDate>Tue, 02 Dec 2014 06:39:01 +0100</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
@@ -267,6 +267,8 @@ Python&lt;/a&gt; by
 &lt;a href=&quot;https://twitter.com/LorenaABarba&quot;&gt;@LorenaABarba&lt;/a&gt;. Here you’ll learn all the
 real numerical methods that should be used instead of the simple one in this
 post.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;UPDATE&lt;/strong&gt;: To play around for yourself, the Ipython notebook can be found &lt;a href=&quot;https://github.com/maxberggren/blog-notebooks/blob/master/SweEbola.ipynb&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
 </description>
         <pubDate>Thu, 27 Nov 2014 21:02:50 +0100</pubDate>
         <link>http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</link>
