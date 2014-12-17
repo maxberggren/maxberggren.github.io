@@ -6,9 +6,38 @@
 </description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 10 Dec 2014 19:16:22 +0100</pubDate>
-    <lastBuildDate>Wed, 10 Dec 2014 19:16:22 +0100</lastBuildDate>
+    <pubDate>Wed, 17 Dec 2014 21:05:27 +0100</pubDate>
+    <lastBuildDate>Wed, 17 Dec 2014 21:05:27 +0100</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
+    
+      <item>
+        <title>Visualization of Swedish cold trends [GIF!]</title>
+        <description>&lt;p&gt;Today my colleagues at &lt;a href=&quot;http://gavagai.se&quot;&gt;Gavagai&lt;/a&gt;, &lt;a href=&quot;http://gavagai.se/blog/2014/12/17/social-media-syndromic-surveillance/&quot;&gt;blogs about the trends of the common cold&lt;/a&gt;. Since people are not shy on sharing when feeling ill in social media, this can be used as a quite good indicator for public health.&lt;/p&gt;
+
+&lt;p&gt;I have about 60 GB of Swedish blog data. Not just because I’m a web crawler freak and/or creep, but because that I use it in my work on finding emerging words in the Swedish language. The nice thing about this data is that it has metadata of where people are writing from.&lt;/p&gt;
+
+&lt;p&gt;This data therefore be used in visualizing the cold trends spatially, and of course – in what better way than a gif? &lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/sjukdomskarta_2013_korr.gif&quot; alt=&quot;Cold trend of 2013 in Sweden&quot; title=&quot;Cold trend of 2013 in Sweden&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;cold-trend-of-2013-in-sweden&quot;&gt;Cold trend of 2013 in Sweden&lt;/h6&gt;
+
+&lt;p&gt;See how people stops talking about colds symptoms in June? And as soon as kindergarten opens again, hell breaks loose again.&lt;/p&gt;
+
+&lt;p&gt;You might also be able to get a feel for how symptoms travels between cities if you squint. &lt;/p&gt;
+
+&lt;p&gt;And don’t mind the chronically ill blogger in Sundsvall that makes that look like a hot zone…&lt;/p&gt;
+</description>
+        <pubDate>Wed, 17 Dec 2014 21:39:50 +0100</pubDate>
+        <link>http://maxberggren.com/2014/12/17/swedish-sickness/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2014/12/17/swedish-sickness/</guid>
+        
+        <category>gif,</category>
+        
+        <category>maps</category>
+        
+        
+      </item>
     
       <item>
         <title>Model of a zombie outbreak in Sweden, Norway and Finland (Denmark is fine)</title>
