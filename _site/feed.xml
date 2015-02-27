@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>MAX BERGGREN</title>
+    <description>Write an awesome description for your new site here. You can edit this line in _config.yml. It will appear in your document head meta (for Google search results) and in your feed.xml site description.
+</description>
+    <link>http://maxberggren.com/</link>
+    <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Wed, 17 Dec 2014 21:05:27 +0100</pubDate>
+    <lastBuildDate>Wed, 17 Dec 2014 21:05:27 +0100</lastBuildDate>
+    <generator>Jekyll v2.5.1</generator>
+    
+      <item>
+        <title>Visualization of Swedish cold trends [GIF!]</title>
+        <description>&lt;p&gt;Today my colleagues at &lt;a href=&quot;http://gavagai.se&quot;&gt;Gavagai&lt;/a&gt;, &lt;a href=&quot;http://gavagai.se/blog/2014/12/17/social-media-syndromic-surveillance/&quot;&gt;blogs about the trends of the common cold&lt;/a&gt;. Since people are not shy on sharing when feeling ill in social media, this can be used as a quite good indicator for public health.&lt;/p&gt;
+
+&lt;p&gt;I have about 60 GB of Swedish blog data. Not just because I’m a web crawler freak and/or creep, but because that I use it in my work on finding emerging words in the Swedish language. The nice thing about this data is that it has metadata of where people are writing from.&lt;/p&gt;
+
+&lt;p&gt;This data therefore be used in visualizing the cold trends spatially, and of course – in what better way than a gif? &lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/sjukdomskarta_2013_korr.gif&quot; alt=&quot;Cold trend of 2013 in Sweden&quot; title=&quot;Cold trend of 2013 in Sweden&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;cold-trend-of-2013-in-sweden&quot;&gt;Cold trend of 2013 in Sweden&lt;/h6&gt;
+
+&lt;p&gt;See how people stops talking about colds symptoms in June? And as soon as kindergarten opens again, hell breaks loose again.&lt;/p&gt;
+
+&lt;p&gt;You might also be able to get a feel for how symptoms travels between cities if you squint. &lt;/p&gt;
+
+&lt;p&gt;And don’t mind the chronically ill blogger in Sundsvall that makes that look like a hot zone…&lt;/p&gt;
+</description>
+        <pubDate>Wed, 17 Dec 2014 21:39:50 +0100</pubDate>
+        <link>http://maxberggren.com/2014/12/17/swedish-sickness/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2014/12/17/swedish-sickness/</guid>
+        
+        <category>gif,</category>
+        
+        <category>maps</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Model of a zombie outbreak in Sweden, Norway and Finland (Denmark is fine)</title>
+        <description>&lt;p&gt;&lt;img src=&quot;/assets/outbreak.gif&quot; alt=&quot;alt text&quot; title=&quot;Title&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;the-spread-of-infection-as-a-gif-even-the-finns-will-succumb&quot;&gt;The spread of infection as a gif. Even the Finns will succumb.&lt;/h6&gt;
+
+&lt;p&gt;Inspired by Jason at &lt;a href=&quot;http://jasmcole.com/2014/10/19
+/going-viral/&quot;&gt;Almost Looks Like Work&lt;/a&gt; I wanted to take on some modeling of disease spread. Note that
+this model has no claim what so ever on reflecting reality and is not to be
+mistaken for the horrible epidemic in West Africa. On the contrary, it’s more to
+be viewed as some sort of fictional zombie outbreak. That said, let’s get down
+to it!&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
+
+\begin{align}
+u(t) &amp; = \begin{pmatrix} S \\ I \\ R \end{pmatrix} &amp; f(u)   = u&#39;(t) =
+\begin{pmatrix} S&#39; \\ I&#39; \\ R&#39; \end{pmatrix}  = \begin{pmatrix}
+  -\beta I S  \\
+  \beta I S - \gamma I  \\
+ \gamma I
+\end{pmatrix}
+\end{align}
+ %]]&gt;&lt;/script&gt;
+
+&lt;p&gt;This is what’s called a &lt;a href=&quot;&quot;&gt;SIR model&lt;/a&gt; where the letters S, I and R reflects
+different states an individual can have in a zombie outbreak:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;$S$ for susceptible. Number of healthy individuals that potentially could
+turn.&lt;/li&gt;
+  &lt;li&gt;$U$ for infected. Number of &lt;em&gt;walkers&lt;/em&gt;.&lt;/li&gt;
+  &lt;li&gt;$R$ for removed. Number of individuals that’s out of the game by separation
+of head from body (if I know my zombie movies correctly), or that survived. But
+there’s no cure of “zombie:ism”, so let’s not fool ourselves (it might be the
+case thou if the SIR model is used for flu epidemics).&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;We also have $\beta$ and $\gamma$:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;$\beta$ is how transmittable the disease is. One bite is all it takes!&lt;/li&gt;
+  &lt;li&gt;$\gamma$ is how fast you go from zombie to dead. Has to be some sort of
+average of how fast our zombie hunters is working… Well it’s not a perfect
+model. Bare with me.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;So $S’ = -\beta I S$ tells us how fast people are turning into zombies. $S’$
+being the time derivative.&lt;/p&gt;
+
+&lt;p&gt;$I’ = \beta I S - \gamma I$ tells us how the infected increases and how fast the
+zombie workers are putting zombies in the &lt;em&gt;removed&lt;/em&gt; state (pun intended).&lt;/p&gt;
+
+&lt;p&gt;$R’ = \gamma I$ just picks up the $\gamma I$ term that was negative in the
+previous equation.&lt;/p&gt;
+
+&lt;p&gt;The above model does not take into account that there must be spatial
+distribution of S/I/R. So let’s fix that!&lt;/p&gt;
+
+&lt;p&gt;One approach is to divide Sweden and the Nordic countries into a grid where
+every cell can infect the nearby. This can be described as follows:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;
+\begin{align}
+ f(u)   = u&#39;(t)  = \begin{pmatrix} S&#39; \\ I&#39; \\ R&#39; \end{pmatrix} =
+\begin{pmatrix}
+  -\beta \left(S_{i,j}I_{i,j} + S_{i-1,j}I_{i-1,j} + S_{i+1,j}I_{i+1,j} +
+S_{i,j-1}I_{i,j-1} + S_{i,j+1}I_{i,j+1}\right)  \\
+  \beta \left(S_{i,j}I_{i,j} + S_{i-1,j}I_{i-1,j} + S_{i+1,j}I_{i+1,j} +
+S_{i,j-1}I_{i,j-1} + S_{i,j+1}I_{i,j+1}\right) - \gamma I_{i,j}  \\
+ \gamma I_{i,j}
+\end{pmatrix}
+\end{align}
+&lt;/script&gt;
+
+&lt;p&gt;Where for example &lt;script type=&quot;math/tex&quot;&gt;S_{ij}&lt;/script&gt; being one cell and &lt;script type=&quot;math/tex&quot;&gt;S_{i-1j}&lt;/script&gt;, &lt;script type=&quot;math/tex&quot;&gt;S_{i+1j}&lt;/script&gt;,
+&lt;script type=&quot;math/tex&quot;&gt;S_{ij-1}&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;S_{ij+1}&lt;/script&gt; being the surrounding cells (let’s not make our
+brains tired with the diagonal cells, we need our brain for not getting our
+brain eaten).&lt;/p&gt;
+
+&lt;p&gt;Initializing some stuff.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import numpy as np
+import math
+import matplotlib.pyplot as plt    
+%matplotlib inline
+from matplotlib import rcParams
+import matplotlib.image as mpimg
+rcParams[&#39;font.family&#39;] = &#39;serif&#39;
+rcParams[&#39;font.size&#39;] = 16
+rcParams[&#39;figure.figsize&#39;] = 12, 8
+from PIL import Image
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Some appropriate beta and gamma making sure to wipe out most of the country.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;beta = 0.010
+gamma = 1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Remember the definition of a derivative? With some rearranging it can actually
+be used to approximate  the next step of the function when the derivative is
+known and $\Delta t$ is assumed to be small. And we have already stated $u’(t)$.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;
+u&#39;(t) = \mathop {\lim }\limits_{\Delta t \to 0} \frac{ {u\left( {t + \Delta t }
+\right) - u\left( t \right)}}{\Delta t}  &lt;/script&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;
+u&#39; \Delta t + u\left( t \right)= {u\left( {t + \Delta t } \right)}  &lt;/script&gt;
+
+&lt;p&gt;Remember from before&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;  f(u)   = u&#39;(t)&lt;/script&gt;
+
+&lt;p&gt;And let’s call $u\left( {t + \Delta t } \right)$ which is the function $u$ in
+the next time step for $u_{n+1}$, and $u(t) = u_n$ which is the current time
+step.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;  u_{n+1} = f(u)\Delta t + u_n  &lt;/script&gt;
+
+&lt;p&gt;This is called &lt;a href=&quot;http://en.wikipedia.org/wiki/Euler_method&quot;&gt;the Euler method&lt;/a&gt;.
+Let’s write it in code:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def euler_step(u, f, dt):
+    return u + dt * f(u)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We also need $f(u)$ in code. This uses some nifty array operations by the
+goodness of numpy. I just might get back to that in another blog post, because
+they’re great and might need some more explaining. But for now this will do.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def f(u):
+    S = u[0]
+    I = u[1]
+    R = u[2]
+    
+    new = np.array([-beta*(S[1:-1, 1:-1]*I[1:-1, 1:-1] + \
+                            S[0:-2, 1:-1]*I[0:-2, 1:-1] + \
+                            S[2:, 1:-1]*I[2:, 1:-1] + \
+                            S[1:-1, 0:-2]*I[1:-1, 0:-2] + \
+                            S[1:-1, 2:]*I[1:-1, 2:]),
+                     beta*(S[1:-1, 1:-1]*I[1:-1, 1:-1] + \
+                            S[0:-2, 1:-1]*I[0:-2, 1:-1] + \
+                            S[2:, 1:-1]*I[2:, 1:-1] + \
+                            S[1:-1, 0:-2]*I[1:-1, 0:-2] + \
+                            S[1:-1, 2:]*I[1:-1, 2:]) - gamma*I[1:-1, 1:-1],
+                     gamma*I[1:-1, 1:-1]
+                    ])
+    
+    padding = np.zeros_like(u)
+    padding[:,1:-1,1:-1] = new
+    padding[0][padding[0] &amp;lt; 0] = 0
+    padding[0][padding[0] &amp;gt; 255] = 255
+    padding[1][padding[1] &amp;lt; 0] = 0
+    padding[1][padding[1] &amp;gt; 255] = 255
+    padding[2][padding[2] &amp;lt; 0] = 0
+    padding[2][padding[2] &amp;gt; 255] = 255
+    
+    return padding
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here I import an map with the population density of the Nordic countries and
+downsample it to make the solving time resonably fast.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from PIL import Image
+img = Image.open(&#39;popdens2.png&#39;)
+img = img.resize((img.size[0]/2,img.size[1]/2)) 
+img = 255 - np.asarray(img)
+imgplot = plt.imshow(img)
+imgplot.set_interpolation(&#39;nearest&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/SweEbola_16_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;population-density-in-the-nordic-countries-denmark-is-missing&quot;&gt;Population density in the Nordic countries (Denmark is missing)&lt;/h6&gt;
+
+&lt;p&gt;Our $S$ matrix, the susceptible individuals should be something like the
+population density. The infected $I$ is for now just zeros. But let’s put a
+patient zero somewhere in Stockholm.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;S_0 = img[:,:,1]
+I_0 = np.zeros_like(S_0)
+I_0[309,170] = 1 # patient zero
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Nobodys dead, yet. So lets put $R$ to zeroes too.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;R_0 = np.zeros_like(S_0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now set some initial values of how long the simulation is to be run and so on.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;T = 900                         # final time
+dt = 1                          # time increment
+N = int(T/dt) + 1               # number of time-steps
+t = np.linspace(0.0, T, N)      # time discretization
+
+# initialize the array containing the solution for each time-step
+u = np.empty((N, 3, S_0.shape[0], S_0.shape[1]))
+u[0][0] = S_0
+u[0][1] = I_0
+u[0][2] = R_0
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We need to make a custom colormap so that the infected matrix can be overlayed
+on the map.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import matplotlib.cm as cm
+theCM = cm.get_cmap(&quot;Reds&quot;)
+theCM._init()
+alphas = np.abs(np.linspace(0, 1, theCM.N))
+theCM._lut[:-3,-1] = alphas
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And we sit back and enjoy…&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;for n in range(N-1):
+    u[n+1] = euler_step(u[n], f, dt)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Not let’s render some images and make a gif of it. Everybody loves gifs!&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from images2gif import writeGif
+
+keyFrames = []
+frames = 60.0
+
+for i in range(0, N-1, int(N/frames)):
+    imgplot = plt.imshow(img, vmin=0, vmax=255)
+    imgplot.set_interpolation(&quot;nearest&quot;)
+    imgplot = plt.imshow(u[i][1], vmin=0, cmap=theCM)
+    imgplot.set_interpolation(&quot;nearest&quot;)
+    filename = &quot;outbreak&quot; + str(i) + &quot;.png&quot;
+    plt.savefig(filename)
+    keyFrames.append(filename)
+  
+images = [Image.open(fn) for fn in keyFrames]
+gifFilename = &quot;outbreak.gif&quot;
+writeGif(gifFilename, images, duration=0.3)
+plt.clf()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/outbreak.gif&quot; alt=&quot;alt text&quot; title=&quot;Title&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;the-spread-of-infection-as-a-gif-even-the-finns-will-succumb-1&quot;&gt;The spread of infection as a gif. Even the Finns will succumb.&lt;/h6&gt;
+
+&lt;p&gt;Look at that! The only safe place seem to be in the northern parts where it’s
+not so densly populated. Even Finland will at the end of the animation be
+infected. Now you know.&lt;/p&gt;
+
+&lt;p&gt;If you want to know more about solving differential equations I can warmly
+recommend &lt;a href=&quot;http://openedx.seas.gwu.edu/courses/GW/MAE6286/2014_fall/about&quot;&gt;Practical Numerical Methods with
+Python&lt;/a&gt; by
+&lt;a href=&quot;https://twitter.com/LorenaABarba&quot;&gt;@LorenaABarba&lt;/a&gt;. Here you’ll learn all the
+real numerical methods that should be used instead of the simple one in this
+post.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;UPDATE&lt;/strong&gt;: To play around for yourself, the Ipython notebook can be found &lt;a href=&quot;https://github.com/maxberggren/blog-notebooks/blob/master/SweEbola.ipynb&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+</description>
+        <pubDate>Thu, 27 Nov 2014 21:02:50 +0100</pubDate>
+        <link>http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</guid>
+        
+        <category>numerics</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>AppleScript running Ipython Notebooks trough double click</title>
+        <description>&lt;p&gt;Here’s some AppleScript magic to have &lt;code&gt;.ipnb&lt;/code&gt;-files runnable with a double click, like they should.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Fire up &lt;code&gt;AppleScript Editor&lt;/code&gt; (found in &lt;code&gt;/Applications/Utilities/&lt;/code&gt;) and paste the following code:&lt;/p&gt;
+
+    &lt;pre&gt;&lt;code&gt; on run
+ 	set startPath to &quot;&quot; --change to your prefered path, mine was /Users/max/Dropbox/Dokument/Python
+ 	tell application &quot;Terminal&quot;
+ 		activate
+ 		do script with command &quot;cd &quot; &amp;amp; startPath &amp;amp; &quot; &amp;amp;&amp;amp; ipython notebook&quot;
+ 	end tell
+ end run
+
+ on open the_files
+ 	repeat with i from 1 to the count of the_files
+ 		tell application &quot;Finder&quot;
+ 			set p to POSIX path of (item i of the_files)
+ 		end tell
+ 		tell application &quot;Terminal&quot;
+ 			activate
+ 			do script with command &quot;ipython notebook &quot; &amp;amp; p
+ 		end tell
+ 	end repeat
+ end open
+&lt;/code&gt;&lt;/pre&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Save as a &lt;code&gt;program&lt;/code&gt; preferably in your &lt;code&gt;/Applications/&lt;/code&gt; folder.&lt;/li&gt;
+  &lt;li&gt;Press &lt;code&gt;Cmd+i&lt;/code&gt; on any &lt;code&gt;.ipnb&lt;/code&gt;-file. &lt;/li&gt;
+  &lt;li&gt;Under &lt;code&gt;Open with&lt;/code&gt; select your created program.&lt;/li&gt;
+  &lt;li&gt;Press &lt;code&gt;Change all...&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;Profit!?!?&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable &lt;code&gt;setPath&lt;/code&gt; to something like &lt;code&gt;/Users/max/Dropbox/Dokument/Python&lt;/code&gt; so you’re at your prefered path right from the start.&lt;/p&gt;
+
+&lt;p&gt;And while we’re at it, here’s some code for a drag and drop AppleScript converting &lt;code&gt;.ipnb&lt;/code&gt; to markdown &lt;code&gt;.md&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;on open the_files
+   repeat with i from 1 to the count of the_files
+   	tell application &quot;Finder&quot;
+   		set filePath to POSIX path of (item i of the_files)
+   	end tell
+   	tell application &quot;Terminal&quot;
+   		activate
+   		set parentFolder to POSIX path of ((the_files as text) &amp;amp; &quot;::&quot;)
+   		do script with command &quot;cd &quot; &amp;amp; parentFolder &amp;amp; &quot; &amp;amp;&amp;amp; ipython nbconvert --to markdown &quot; &amp;amp; filePath
+   	end tell
+	end repeat
+end open
+&lt;/code&gt;&lt;/pre&gt;
+
+</description>
+        <pubDate>Mon, 24 Nov 2014 21:29:50 +0100</pubDate>
+        <link>http://maxberggren.com/2014/11/24/applescript-ipnb/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2014/11/24/applescript-ipnb/</guid>
+        
+        <category>applescript</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Aerodynamic Optimization of a Wind Turbine Using a Genetic Algorithm, Blade Element Momentum Theory and Xfoil</title>
+        <description>&lt;p&gt;What if wind turbines could reproduce (yes, feel free to picture it you perv)? Maybe then evolution would create a superbreed of wind turbines outperforming the ones we have today.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/seed.png&quot; alt=&quot;Seed of randomized airfoils&quot; title=&quot;Seed of randomized airfoils&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;figure-1-a-part-of-the-initial-seed-of-randomized-airfoils&quot;&gt;Figure 1: A part of the initial seed of randomized airfoils&lt;/h6&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/optimized.png&quot; alt=&quot;Optimized airfoil&quot; title=&quot;Optimized airfoil&quot; /&gt;&lt;/p&gt;
+
+&lt;h6 id=&quot;figure-2-the-final-airfoil-that-showed-15--better-results&quot;&gt;Figure 2: The final airfoil that showed 15 % better results&lt;/h6&gt;
+
+&lt;p&gt;That was the general idea of my bachelor’s thesis, and I actually got some promising results. To investigate this, I developed an implementation of the &lt;a href=&quot;http://en.wikipedia.org/wiki/Blade_element_momentum_theory&quot;&gt;blade element momentum theory&lt;/a&gt; in Python - integrating it with the open source software &lt;a href=&quot;http://web.mit.edu/drela/Public/web/xfoil/&quot;&gt;Xfoil&lt;/a&gt;. This enabled for an genetic algorithm to be used in producing a new wind turbine rotor blade with efficiency gains up to 15 % for an arbitrary wind site.&lt;/p&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://github.com/maxberggren/SiteOpt&quot;&gt;code&lt;/a&gt; is on GitHub and so is the &lt;a href=&quot;https://github.com/maxberggren/Bachelor-Thesis&quot;&gt;thesis&lt;/a&gt;. Unfortionally only in Swedish, but here’s the English abstract:&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;This study presents a methodology that enables the annual average power of a wind turbine to be increased by automatically optimizing it’s airfoil, twist and chord distribution. As a part of the study the software SiteOpt has been developed. This software connects the open source software XFOIL with the blade element momentum theory. XFOIL gives lift and drag coefficients which enable the blade element momentum theory to predict the power of a wind turbine at different wind and rotational speeds. An optimization algorithm of the type genetic algorithms is used to develop a new rotor blade. An academic benchmark case (Unsteady Aerodynamics Experiment Phase III) was selected as a starting point of the optimization because wind tunnel data was available for that campain. With the geometry developed by the genetic algoritm a theoretical increase of  15 % more power could be extracted. However, it has been shown that the model has shortcomings at high wind speeds where the predicted power does not match wind tunnel data. This is thought to be related to that the model assumes a completely rigid blade. In real world applications a rotorblade will bend on higher wind speeds (about 8 m/s). It is therefore concluded that the model in its current form is flawed and that future work should aim to take these effects into account. However, a wind histogram for a specific location was used in order to calculate the annual average power for the wind turbine. The wind histogram used in this study to obtain the results has it’s wind speeds 81 % before 10 m/s where the model is acceptable. Therefore the results are largely to be considered accurate. &lt;/p&gt;
+&lt;/blockquote&gt;
+</description>
+        <pubDate>Sun, 24 Aug 2014 18:39:50 +0200</pubDate>
+        <link>http://maxberggren.com/2014/08/24/bachelors-thesis/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2014/08/24/bachelors-thesis/</guid>
+        
+        <category>academic</category>
+        
+        
+      </item>
+    
+  </channel>
+</rss>
