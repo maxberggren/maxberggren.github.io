@@ -5,12 +5,12 @@
     <description></description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 10 Jun 2015 20:21:20 +0200</pubDate>
-    <lastBuildDate>Wed, 10 Jun 2015 20:21:20 +0200</lastBuildDate>
+    <pubDate>Wed, 10 Jun 2015 20:22:47 +0200</pubDate>
+    <lastBuildDate>Wed, 10 Jun 2015 20:22:47 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
-        <title>Wisper Game with code and a translation service API</title>
+        <title>Wisper Game with code and a translation service</title>
         <description>&lt;p&gt;At least in Sweden there was this game where you sat in a ring of kids, one thought of a sentence which he/she wispered to the next kid, who passed it along and so on… Until the message reached its sender again. Usually the message was completely cray cray by then. &lt;/p&gt;
 
 &lt;p&gt;This made me think about what kind of information is beeing lost when an translation is made between languages. Surely the translator puts its touch on it and maybe also cultural differences will be reflected in the translation. &lt;/p&gt;
