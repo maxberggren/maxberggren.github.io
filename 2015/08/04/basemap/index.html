@@ -132,13 +132,24 @@ ax = fig1.add_axes([0.1,0.1,0.8,0.8])
 m.drawmapboundary(color='white', 
                   linewidth=0.0, 
                   fill_color='white')
-m.drawparallels(parallels, linewidth=lw, dashes=dashes, color=graticules_color)
-m.drawmeridians(meridians, linewidth=lw, dashes=dashes, color=graticules_color)
+m.drawparallels(parallels, 
+                linewidth=lw, 
+                dashes=dashes, 
+                color=graticules_color)
+m.drawmeridians(meridians, 
+                linewidth=lw, 
+                dashes=dashes, 
+                color=graticules_color)
 m.drawcoastlines(linewidth=0)
-m.fillcontinents('black', lake_color='white')
-m.drawcountries(linewidth=1, linestyle='solid', color='white', zorder=30)
+m.fillcontinents('black', 
+                 lake_color='white')
+m.drawcountries(linewidth=1, 
+                linestyle='solid', 
+                color='white', 
+                zorder=30)
 
-title = plt.title('World map (Kavrayskiy 7)', fontsize=20) 
+title = plt.title('World map (Kavrayskiy 7)', 
+                  fontsize=20) 
 title.set_y(1.03) # Move the title a bit for niceness
 </code></pre>
 
@@ -149,7 +160,9 @@ title.set_y(1.03) # Move the title a bit for niceness
 <p>We use <code>m.scatter</code> to make the bubble plot.</p>
 
 <pre><code>m.readshapefile('shapefiles/ne_110m_populated_places/ne_110m_populated_places', 
-                name='populated_places', drawbounds=False, color='none')
+                name='populated_places', 
+                drawbounds=False, 
+                color='none')
 
 populations = [r['POP2000'] for r in m.populated_places_info]
 lats = [r['LATITUDE'] for r in m.populated_places_info]
@@ -168,14 +181,18 @@ m.scatter(x1, y1,
 <p>But most likely a shapefile will contain a shape that you want to put on your map. Let’s put out the borders of the tectonic plates on our map. The tectonic plate shapefile can be found <a href="https://github.com/fraxen/tectonicplates">here</a>.</p>
 
 <pre><code>m.readshapefile('shapefiles/tectonicplates-master/PB2002_plates', 
-                name='tectonic_plates', drawbounds=True, color='red')
+                name='tectonic_plates', 
+                drawbounds=True, 
+                color='red')
 </code></pre>
 
 <p><img src="/assets/tutorial_11_0.png" alt="png" /></p>
 
 <p>But you’ll probably also want to have control over the settings of the shapes e.g. color the Australia plate in a different way</p>
 
-<pre><code>for info, shape in zip(m.tectonic_plates_info, m.tectonic_plates):
+<pre><code>for info, shape in zip(m.tectonic_plates_info, 
+                       m.tectonic_plates):
+
     if info['PlateName'] == "Australia":
         x, y = zip(*shape) 
         m.plot(x, y, marker=None, color='b')
@@ -190,7 +207,9 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import PathPatch
         
 patches = []
-for info, shape in zip(m.tectonic_plates_info, m.tectonic_plates):
+for info, shape in zip(m.tectonic_plates_info, 
+                       m.tectonic_plates):
+                       
     if info['PlateName'] == "Australia":
         patches.append(Polygon(np.array(shape), True))
         
