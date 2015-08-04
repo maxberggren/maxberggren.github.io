@@ -5,8 +5,8 @@
     <description></description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Tue, 04 Aug 2015 21:53:38 +0200</pubDate>
-    <lastBuildDate>Tue, 04 Aug 2015 21:53:38 +0200</lastBuildDate>
+    <pubDate>Tue, 04 Aug 2015 21:59:55 +0200</pubDate>
+    <lastBuildDate>Tue, 04 Aug 2015 21:59:55 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
@@ -45,7 +45,9 @@ graticules_color = &#39;grey&#39;
 fig1.patch.set_facecolor(&#39;#e6e8ec&#39;)
 ax = fig1.add_axes([0.1,0.1,0.8,0.8])
 
-m.drawmapboundary(color=&#39;white&#39;, linewidth=0.0, fill_color=&#39;white&#39;)
+m.drawmapboundary(color=&#39;white&#39;, 
+                  linewidth=0.0, 
+                  fill_color=&#39;white&#39;)
 m.drawparallels(parallels, linewidth=lw, dashes=dashes, color=graticules_color)
 m.drawmeridians(meridians, linewidth=lw, dashes=dashes, color=graticules_color)
 m.drawcoastlines(linewidth=0)
@@ -64,8 +66,6 @@ title.set_y(1.03) # Move the title a bit for niceness
 
 &lt;pre&gt;&lt;code&gt;m.readshapefile(&#39;shapefiles/ne_110m_populated_places/ne_110m_populated_places&#39;, 
                 name=&#39;populated_places&#39;, drawbounds=False, color=&#39;none&#39;)
-
-# Download shapefile from here: http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/
 
 populations = [r[&#39;POP2000&#39;] for r in m.populated_places_info]
 lats = [r[&#39;LATITUDE&#39;] for r in m.populated_places_info]
