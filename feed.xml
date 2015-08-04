@@ -5,13 +5,17 @@
     <description></description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Tue, 04 Aug 2015 22:18:51 +0200</pubDate>
-    <lastBuildDate>Tue, 04 Aug 2015 22:18:51 +0200</lastBuildDate>
+    <pubDate>Tue, 04 Aug 2015 22:31:41 +0200</pubDate>
+    <lastBuildDate>Tue, 04 Aug 2015 22:31:41 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
         <title>Working with maps in Python</title>
-        <description>&lt;p&gt;Kristoffer over at &lt;a href=&quot;http://rpsychologist.com&quot;&gt;rpsychologist.com&lt;/a&gt; wrote a &lt;a href=&quot;http://rpsychologist.com/working-with-shapefiles-projections-and-world-maps-in-ggplot&quot;&gt;really nice tutorial&lt;/a&gt; on getting up to speed with maps in R. Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an &lt;a href=&quot;https://gist.github.com/maxberggren/45904cab7550ba73fa03&quot;&gt;Jupyter Notebook&lt;/a&gt;.&lt;/p&gt;
+        <description>&lt;p&gt;Kristoffer over at &lt;a href=&quot;http://rpsychologist.com&quot;&gt;rpsychologist.com&lt;/a&gt; wrote a &lt;a href=&quot;http://rpsychologist.com/working-with-shapefiles-projections-and-world-maps-in-ggplot&quot;&gt;really nice tutorial&lt;/a&gt; on getting up to speed with maps in R. It looked something like this.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_9_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an &lt;a href=&quot;https://gist.github.com/maxberggren/45904cab7550ba73fa03&quot;&gt;Jupyter Notebook&lt;/a&gt; than you can download and run on our local machine.&lt;/p&gt;
 
 &lt;p&gt;To start with you need the packages &lt;code&gt;numpy&lt;/code&gt; and &lt;code&gt;matplotlib basemap&lt;/code&gt;. The latter should only be installed through &lt;a href=&quot;http://continuum.io/downloads&quot;&gt;Anaconda&lt;/a&gt; which is your, from here on, favorite Python package installer. So let’s load them up.&lt;/p&gt;
 
