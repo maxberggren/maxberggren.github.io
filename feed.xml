@@ -5,19 +5,19 @@
     <description></description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 05 Aug 2015 19:57:36 +0200</pubDate>
-    <lastBuildDate>Wed, 05 Aug 2015 19:57:36 +0200</lastBuildDate>
+    <pubDate>Wed, 05 Aug 2015 21:35:58 +0200</pubDate>
+    <lastBuildDate>Wed, 05 Aug 2015 21:35:58 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
         <title>Introducing Shamebot3</title>
-        <description>&lt;p&gt;How we perceive our world is surely influenced a great deal by what kind of people we choose to represent it. Lead roles in movies is mainly held by men (at least in the top #100 imdb movies). That sets the stage for a world where men are perceived as in the lead role. This is perhaps not news, but quantifying this inequality might be a step in the direction of correcting it.&lt;/p&gt;
+        <description>&lt;p&gt;How we perceive our world is surely influenced a by what kind of people we let represent it. Lead roles in movies is mainly held by men (at least in the top #100 imdb movies). That sets the stage for a world where men are perceived as in the lead role. This is perhaps not news, but quantifying this inequality might be a step in the direction of correcting it.&lt;/p&gt;
 
 &lt;p&gt;Therefore I built a &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;bot&lt;/a&gt; that:&lt;/p&gt;
 
 &lt;ol&gt;
   &lt;li&gt;Scans the major Swedish news sites for names of the form &lt;code&gt;Surname Lastname&lt;/code&gt;.&lt;/li&gt;
-  &lt;li&gt;Checks every surname against the Sweden Statistics (SCB.se) name database, counting every name used by more than 95 % of exclusivly one gender. Unisex names are therefore excluded.&lt;/li&gt;
+  &lt;li&gt;Checks every surname against Sweden Statistics (&lt;a href=&quot;http://www.scb.se/&quot;&gt;SCB&lt;/a&gt;) name database, counting every name used by more than 95 % of exclusivly one gender. Unisex names are therefore excluded.&lt;/li&gt;
   &lt;li&gt;Calculates the percentage of women represented by each site and logs it in a timeseries.&lt;/li&gt;
   &lt;li&gt;Tweets once every week and month with a graph ranking the Swedish news sites.&lt;/li&gt;
 &lt;/ol&gt;
@@ -26,11 +26,13 @@
 
 &lt;p&gt;&lt;img src=&quot;/assets/shamebot.png&quot; alt=&quot;graph of percentage women represented in Swedish news media&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see). &lt;/p&gt;
+&lt;p&gt;So basically it shames the least equal newspaper, hoping for retweets to add on to the feel of a angry online mob. In this analogy, twitter is the public shame pole of the village.&lt;/p&gt;
+
+&lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see from the graph). &lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/timeseries.png&quot; alt=&quot;timeseries&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service news channel funded by tax money (black line) comes out second. &lt;/p&gt;
+&lt;p&gt;Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service, that is funded by tax money (black line), comes out second. &lt;/p&gt;
 
 &lt;p&gt;When more data is avalible I will probably revisit this again.&lt;/p&gt;
 
