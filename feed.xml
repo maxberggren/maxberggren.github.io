@@ -5,9 +5,45 @@
     <description></description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 05 Aug 2015 15:05:24 +0200</pubDate>
-    <lastBuildDate>Wed, 05 Aug 2015 15:05:24 +0200</lastBuildDate>
+    <pubDate>Wed, 05 Aug 2015 15:57:36 +0200</pubDate>
+    <lastBuildDate>Wed, 05 Aug 2015 15:57:36 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
+    
+      <item>
+        <title>Introducing Shamebot3</title>
+        <description>&lt;p&gt;How we perceive our world is surely influenced a great deal by what kind of people we choose to represent it. Lead roles in movies is mainly held by men (at least in the top #100 imdb movies). That sets the stage for a world where men are perceived as in the lead role. This is perhaps not news, but quantifying this inequality might be a step in the direction of correcting it.&lt;/p&gt;
+
+&lt;p&gt;Therefore I bult a &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;bot&lt;/a&gt; that:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Scans the major Swedish news sites for names of the form &lt;code&gt;Surname Lastname&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Checks every surname against the Sweden Statistics (SCB.se) name database, counting every name used by more than 95 % of exclusivly one gender. Unisex names are therefore excluded.&lt;/li&gt;
+  &lt;li&gt;Calculates the percentage of women represented by each site and logs it in a timeseries.&lt;/li&gt;
+  &lt;li&gt;Tweets once every week and month with a graph ranking the Swedish news sites.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;It looks something like this.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/shamebot.png&quot; alt=&quot;graph of percentage women represented in Swedish news media&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see). Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service news channel funded by tax money (black line) comes out second. &lt;/p&gt;
+
+&lt;p&gt;When more data is avalible I will probably revisit this again.&lt;/p&gt;
+
+&lt;p&gt;Code for the bot can be found on my &lt;a href=&quot;https://github.com/maxberggren/shamebot&quot;&gt;Github&lt;/a&gt; and the twitter account connected with it is &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;Shamebot3&lt;/a&gt; (shamebot one and two as already taken).&lt;/p&gt;
+</description>
+        <pubDate>Wed, 05 Aug 2015 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.com/2015/08/05/shamebot/</link>
+        <guid isPermaLink="true">http://maxberggren.com/2015/08/05/shamebot/</guid>
+        
+        <category>python,</category>
+        
+        <category>equality,</category>
+        
+        <category>shamebot</category>
+        
+        
+      </item>
     
       <item>
         <title>Working with maps in Python</title>
@@ -815,35 +851,6 @@ end open
         <guid isPermaLink="true">http://maxberggren.com/2014/11/24/applescript-ipnb/</guid>
         
         <category>applescript</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Aerodynamic Optimization of a Wind Turbine Using a Genetic Algorithm, Blade Element Momentum Theory and Xfoil</title>
-        <description>&lt;p&gt;What if wind turbines could reproduce (yes, feel free to picture it you perv)? Maybe then evolution would create a superbreed of wind turbines outperforming the ones we have today.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/seed.png&quot; alt=&quot;Seed of randomized airfoils&quot; title=&quot;Seed of randomized airfoils&quot; /&gt;&lt;/p&gt;
-
-&lt;h6 id=&quot;figure-1-a-part-of-the-initial-seed-of-randomized-airfoils&quot;&gt;Figure 1: A part of the initial seed of randomized airfoils&lt;/h6&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/optimized.png&quot; alt=&quot;Optimized airfoil&quot; title=&quot;Optimized airfoil&quot; /&gt;&lt;/p&gt;
-
-&lt;h6 id=&quot;figure-2-the-final-airfoil-that-showed-15--better-results&quot;&gt;Figure 2: The final airfoil that showed 15 % better results&lt;/h6&gt;
-
-&lt;p&gt;That was the general idea of my bachelor’s thesis, and I actually got some promising results. To investigate this, I developed an implementation of the &lt;a href=&quot;http://en.wikipedia.org/wiki/Blade_element_momentum_theory&quot;&gt;blade element momentum theory&lt;/a&gt; in Python - integrating it with the open source software &lt;a href=&quot;http://web.mit.edu/drela/Public/web/xfoil/&quot;&gt;Xfoil&lt;/a&gt;. This enabled for an genetic algorithm to be used in producing a new wind turbine rotor blade with efficiency gains up to 15 % for an arbitrary wind site.&lt;/p&gt;
-
-&lt;p&gt;The &lt;a href=&quot;https://github.com/maxberggren/SiteOpt&quot;&gt;code&lt;/a&gt; is on GitHub and so is the &lt;a href=&quot;https://github.com/maxberggren/Bachelor-Thesis&quot;&gt;thesis&lt;/a&gt;. Unfortionally only in Swedish, but here’s the English abstract:&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;This study presents a methodology that enables the annual average power of a wind turbine to be increased by automatically optimizing it’s airfoil, twist and chord distribution. As a part of the study the software SiteOpt has been developed. This software connects the open source software XFOIL with the blade element momentum theory. XFOIL gives lift and drag coefficients which enable the blade element momentum theory to predict the power of a wind turbine at different wind and rotational speeds. An optimization algorithm of the type genetic algorithms is used to develop a new rotor blade. An academic benchmark case (Unsteady Aerodynamics Experiment Phase III) was selected as a starting point of the optimization because wind tunnel data was available for that campain. With the geometry developed by the genetic algoritm a theoretical increase of  15 % more power could be extracted. However, it has been shown that the model has shortcomings at high wind speeds where the predicted power does not match wind tunnel data. This is thought to be related to that the model assumes a completely rigid blade. In real world applications a rotorblade will bend on higher wind speeds (about 8 m/s). It is therefore concluded that the model in its current form is flawed and that future work should aim to take these effects into account. However, a wind histogram for a specific location was used in order to calculate the annual average power for the wind turbine. The wind histogram used in this study to obtain the results has it’s wind speeds 81 % before 10 m/s where the model is acceptable. Therefore the results are largely to be considered accurate. &lt;/p&gt;
-&lt;/blockquote&gt;
-</description>
-        <pubDate>Sun, 24 Aug 2014 18:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2014/08/24/bachelors-thesis/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2014/08/24/bachelors-thesis/</guid>
-        
-        <category>academic</category>
         
         
       </item>

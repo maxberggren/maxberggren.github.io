@@ -6,11 +6,11 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width initial-scale=1">
 
-  <title>MAX BERGGREN</title>
-  <meta name="description" content="">
+  <title>Introducing Shamebot3</title>
+  <meta name="description" content="How we perceive our world is surely influenced a great deal by what kind of people we choose to represent it. Lead roles in movies is mainly held by men (at ...">
 
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="canonical" href="http://maxberggren.com/">
+  <link rel="canonical" href="http://maxberggren.com/2015/08/05/shamebot/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.com/feed.xml" />
   
   <!-- Font -->
@@ -87,104 +87,52 @@
 
     <div class="page-content">
       <div class="wrapper">
-        <div class="home">
+        <div class="post">
 
-  <h1 class="page-heading">Posts</h1>
+  <header class="post-header">
+    <h1 class="post-title">Introducing Shamebot3</h1>
+    <p class="post-meta">Aug 5, 2015</p>
+  </header>
 
-  <ul class="post-list">
-    
-      <li>
-        <span class="post-meta">Aug 5, 2015</span>
+  <article class="post-content">
+    <p>How we perceive our world is surely influenced a great deal by what kind of people we choose to represent it. Lead roles in movies is mainly held by men (at least in the top #100 imdb movies). That sets the stage for a world where men are perceived as in the lead role. This is perhaps not news, but quantifying this inequality might be a step in the direction of correcting it.</p>
 
-        <h2>
-          <a class="post-link" href="/2015/08/05/shamebot/">Introducing Shamebot3</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Aug 4, 2015</span>
+<p>Therefore I bult a <a href="https://twitter.com/shamebot3">bot</a> that:</p>
 
-        <h2>
-          <a class="post-link" href="/2015/08/04/basemap/">Working with maps in Python</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Jun 10, 2015</span>
+<ol>
+  <li>Scans the major Swedish news sites for names of the form <code>Surname Lastname</code>.</li>
+  <li>Checks every surname against the Sweden Statistics (SCB.se) name database, counting every name used by more than 95 % of exclusivly one gender. Unisex names are therefore excluded.</li>
+  <li>Calculates the percentage of women represented by each site and logs it in a timeseries.</li>
+  <li>Tweets once every week and month with a graph ranking the Swedish news sites.</li>
+</ol>
 
-        <h2>
-          <a class="post-link" href="/2015/06/10/wisper-game/">Wisper Game with code and a translation service</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">May 18, 2015</span>
+<p>It looks something like this.</p>
 
-        <h2>
-          <a class="post-link" href="/2015/05/18/slides-nodalida-2015/">Slides from NoDaLiDa 2015</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Apr 29, 2015</span>
+<p><img src="/assets/shamebot.png" alt="graph of percentage women represented in Swedish news media" /></p>
 
-        <h2>
-          <a class="post-link" href="/2015/04/29/life-graph/">My life as a graph</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Apr 15, 2015</span>
+<p>The timeseries shows some general trends already, even though the bot was broken for some time (as you can see). Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service news channel funded by tax money (black line) comes out second. </p>
 
-        <h2>
-          <a class="post-link" href="/2015/04/15/martingale-strategy/">A betting strategy to good to be true?</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Feb 27, 2015</span>
+<p>When more data is avalible I will probably revisit this again.</p>
 
-        <h2>
-          <a class="post-link" href="/2015/02/27/people-named-adolf/">People named Adolf in Sweden</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Dec 17, 2014</span>
+<p>Code for the bot can be found on my <a href="https://github.com/maxberggren/shamebot">Github</a> and the twitter account connected with it is <a href="https://twitter.com/shamebot3">Shamebot3</a> (shamebot one and two as already taken).</p>
 
-        <h2>
-          <a class="post-link" href="/2014/12/17/swedish-sickness/">Visualization of Swedish cold trends [GIF!]</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Nov 27, 2014</span>
+  </article>
 
-        <h2>
-          <a class="post-link" href="/2014/11/27/model-of-a-zombie-outbreak/">Model of a zombie outbreak in Sweden, Norway and Finland (Denmark is fine)</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Nov 24, 2014</span>
+  
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+      /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+      var disqus_shortname = 'maxberggren'; // required: replace example with your forum shortname
 
-        <h2>
-          <a class="post-link" href="/2014/11/24/applescript-ipnb/">AppleScript running Ipython Notebooks trough double click</a>
-        </h2>
-      </li>
-    
-      <li>
-        <span class="post-meta">Aug 24, 2014</span>
-
-        <h2>
-          <a class="post-link" href="/2014/08/24/bachelors-thesis/">Aerodynamic Optimization of a Wind Turbine Using a Genetic Algorithm, Blade Element Momentum Theory and Xfoil</a>
-        </h2>
-      </li>
-    
-  </ul>
-
-  <p class="rss-subscribe">subscribe <a href="/feed.xml">via RSS</a></p>
-
+      /* * * DON'T EDIT BELOW THIS LINE * * */
+      (function() {
+          var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  
 </div>
 
       </div>
