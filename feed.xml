@@ -5,8 +5,8 @@
     <description></description>
     <link>http://maxberggren.com/</link>
     <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 05 Aug 2015 15:59:44 +0200</pubDate>
-    <lastBuildDate>Wed, 05 Aug 2015 15:59:44 +0200</lastBuildDate>
+    <pubDate>Wed, 05 Aug 2015 16:00:53 +0200</pubDate>
+    <lastBuildDate>Wed, 05 Aug 2015 16:00:53 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
@@ -28,7 +28,7 @@
 
 &lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see). &lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;/assets/timeseries.png&quot;&gt;Timeseries&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/assets/timeseries.png&quot; alt=&quot;timeseries&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service news channel funded by tax money (black line) comes out second. &lt;/p&gt;
 
