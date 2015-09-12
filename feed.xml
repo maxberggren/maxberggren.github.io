@@ -3,10 +3,10 @@
   <channel>
     <title>MAX BERGGREN</title>
     <description></description>
-    <link>http://maxberggren.com/</link>
-    <atom:link href="http://maxberggren.com/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Tue, 11 Aug 2015 22:18:09 +0200</pubDate>
-    <lastBuildDate>Tue, 11 Aug 2015 22:18:09 +0200</lastBuildDate>
+    <link>http://maxberggren.se/</link>
+    <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sat, 12 Sep 2015 12:53:50 +0200</pubDate>
+    <lastBuildDate>Sat, 12 Sep 2015 12:53:50 +0200</lastBuildDate>
     <generator>Jekyll v2.5.1</generator>
     
       <item>
@@ -39,8 +39,8 @@
 &lt;p&gt;Code for the bot can be found on my &lt;a href=&quot;https://github.com/maxberggren/shamebot&quot;&gt;Github&lt;/a&gt; and the twitter account connected with it is &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;Shamebot3&lt;/a&gt; (shamebot one and two was already taken).&lt;/p&gt;
 </description>
         <pubDate>Wed, 05 Aug 2015 21:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2015/08/05/shamebot/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/08/05/shamebot/</guid>
+        <link>http://maxberggren.se/2015/08/05/shamebot/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/08/05/shamebot/</guid>
         
         <category>python,</category>
         
@@ -186,8 +186,8 @@ ax.add_collection(PatchCollection(patches,
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 </description>
         <pubDate>Tue, 04 Aug 2015 21:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2015/08/04/basemap/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/08/04/basemap/</guid>
+        <link>http://maxberggren.se/2015/08/04/basemap/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/08/04/basemap/</guid>
         
         <category>maps,</category>
         
@@ -258,8 +258,8 @@ r.start()
 
 </description>
         <pubDate>Wed, 10 Jun 2015 21:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2015/06/10/wisper-game/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/06/10/wisper-game/</guid>
+        <link>http://maxberggren.se/2015/06/10/wisper-game/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/06/10/wisper-game/</guid>
         
         <category>graphs</category>
         
@@ -272,8 +272,8 @@ r.start()
 
 </description>
         <pubDate>Mon, 18 May 2015 22:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2015/05/18/slides-nodalida-2015/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/05/18/slides-nodalida-2015/</guid>
+        <link>http://maxberggren.se/2015/05/18/slides-nodalida-2015/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/05/18/slides-nodalida-2015/</guid>
         
         <category>academic</category>
         
@@ -289,8 +289,8 @@ r.start()
 &lt;p&gt;In the same way that a photograph takes you back - I’ve been starring at this image for the last couple of minutes or so.&lt;/p&gt;
 </description>
         <pubDate>Wed, 29 Apr 2015 21:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2015/04/29/life-graph/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/04/29/life-graph/</guid>
+        <link>http://maxberggren.se/2015/04/29/life-graph/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/04/29/life-graph/</guid>
         
         <category>graphs</category>
         
@@ -470,8 +470,8 @@ print balances
 
 </description>
         <pubDate>Wed, 15 Apr 2015 18:39:50 +0200</pubDate>
-        <link>http://maxberggren.com/2015/04/15/martingale-strategy/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/04/15/martingale-strategy/</guid>
+        <link>http://maxberggren.se/2015/04/15/martingale-strategy/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/04/15/martingale-strategy/</guid>
         
         <category>betting</category>
         
@@ -491,8 +491,8 @@ print balances
 &lt;p&gt;Looks like the decline starts a year or two before Hitler takes power as reichskanzler 1933. I guess everybody in Sweden knew his name and politics by then and choose not to name their babies to Adolf as frequently. &lt;/p&gt;
 </description>
         <pubDate>Fri, 27 Feb 2015 17:39:50 +0100</pubDate>
-        <link>http://maxberggren.com/2015/02/27/people-named-adolf/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2015/02/27/people-named-adolf/</guid>
+        <link>http://maxberggren.se/2015/02/27/people-named-adolf/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/02/27/people-named-adolf/</guid>
         
         <category>data</category>
         
@@ -518,8 +518,8 @@ print balances
 &lt;p&gt;And don’t mind the chronically ill blogger in Sundsvall that makes that look like a hot zone…&lt;/p&gt;
 </description>
         <pubDate>Wed, 17 Dec 2014 21:39:50 +0100</pubDate>
-        <link>http://maxberggren.com/2014/12/17/swedish-sickness/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2014/12/17/swedish-sickness/</guid>
+        <link>http://maxberggren.se/2014/12/17/swedish-sickness/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2014/12/17/swedish-sickness/</guid>
         
         <category>gif,</category>
         
@@ -789,8 +789,8 @@ post.&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;UPDATE&lt;/strong&gt;: To play around for yourself, the Ipython notebook can be found &lt;a href=&quot;https://github.com/maxberggren/blog-notebooks/blob/master/SweEbola.ipynb&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
 </description>
         <pubDate>Thu, 27 Nov 2014 21:02:50 +0100</pubDate>
-        <link>http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2014/11/27/model-of-a-zombie-outbreak/</guid>
+        <link>http://maxberggren.se/2014/11/27/model-of-a-zombie-outbreak/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2014/11/27/model-of-a-zombie-outbreak/</guid>
         
         <category>numerics</category>
         
@@ -853,8 +853,8 @@ end open
 
 </description>
         <pubDate>Mon, 24 Nov 2014 21:29:50 +0100</pubDate>
-        <link>http://maxberggren.com/2014/11/24/applescript-ipnb/</link>
-        <guid isPermaLink="true">http://maxberggren.com/2014/11/24/applescript-ipnb/</guid>
+        <link>http://maxberggren.se/2014/11/24/applescript-ipnb/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2014/11/24/applescript-ipnb/</guid>
         
         <category>applescript</category>
         
