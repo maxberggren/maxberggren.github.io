@@ -6,11 +6,11 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width initial-scale=1">
 
-  <title>Working with maps in Python</title>
-  <meta name="description" content="Kristoffer over at rpsychologist.com wrote a really nice tutorial on getting up to speed with maps in R. It looked something like this.">
+  <title>Mapping town names atomic parts in Sweden</title>
+  <meta name="description" content="Many towns in Sweden share the same atomic parts in their names. -hult is common in Småland -arp is common in Skåne. I got curious of how they cluster geogra...">
 
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="canonical" href="http://maxberggren.se/2015/08/04/basemap/">
+  <link rel="canonical" href="http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
   
   <!-- Font -->
@@ -90,150 +90,207 @@
         <div class="post">
 
   <header class="post-header">
-    <h1 class="post-title">Working with maps in Python</h1>
-    <p class="post-meta">Aug 4, 2015</p>
+    <h1 class="post-title">Mapping town names atomic parts in Sweden</h1>
+    <p class="post-meta">Jul 14, 2016</p>
   </header>
 
   <article class="post-content">
-    <p>Kristoffer over at <a href="http://rpsychologist.com">rpsychologist.com</a> wrote a <a href="http://rpsychologist.com/working-with-shapefiles-projections-and-world-maps-in-ggplot">really nice tutorial</a> on getting up to speed with maps in R. It looked something like this.</p>
+    <p>Many towns in Sweden share the same atomic parts in their names. <code class="highlighter-rouge">-hult</code> is common in Småland <code class="highlighter-rouge">-arp</code> is common in Skåne. I got curious of how they cluster geographically. Let’s load up a <code class="highlighter-rouge">DataFrame</code> with the <a href="/assets/swe_towns_latlon.csv">positions of Swedish towns</a> that I made by querying Google for the position of every Swedish town I could find on Wikipedia.</p>
 
-<p><img src="/assets/tutorial_9_0.png" alt="png" /></p>
+<p>This notebook is also available as a <a href="https://gist.github.com/maxberggren/ccc0c9c3efd4b166ebbe4be9a4e54882">Jupyter Notebook here</a> if you want to execute the code yourself.</p>
 
-<p>Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an <a href="https://gist.github.com/maxberggren/45904cab7550ba73fa03/5e698a92c9b538ab3fbcb85c6092af06e34bcc76">Jupyter Notebook</a> that you can download and run on our local machine.</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>import pandas as pd
 
-<p>To start with you need the packages <code class="highlighter-rouge">numpy</code> and <code class="highlighter-rouge">matplotlib basemap</code>. The latter should only be installed through <a href="http://continuum.io/downloads">Anaconda</a> which is your, from here on, favorite Python package installer. So let’s load them up.</p>
+df = pd.read_csv('swe_towns_latlon.csv', encoding='utf-8')
+df['town'] = df['town'].str.lower()
+</code></pre>
+</div>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>import numpy as np
+<p>And then do some crappy character n-gram extractions.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>def find_features(s):
+    feats = [s[i:i+7] for i in xrange(len(s)-6)] 
+    feats += [s[i:i+6] for i in xrange(len(s)-5)] 
+    feats += [s[i:i+5] for i in xrange(len(s)-4)] 
+    feats += [s[i:i+4] for i in xrange(len(s)-3)] 
+    feats += [s[i:i+3] for i in xrange(len(s)-2)] 
+    return feats
+
+features = []
+for town in df['town'].values:
+    features.extend(find_features(town))
+</code></pre>
+</div>
+
+<p>To be able to count the occurances.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>features = list(set(features))
+final_features = []
+occurances = []
+
+for feature in features:
+    try:
+        occurances.append(sum(df['town'].str.contains(feature)))
+        final_features.append(feature)
+    except:
+        pass
+    
+df_features = pd.DataFrame({
+    'feature': final_features, 
+    'occurances': occurances 
+})
+</code></pre>
+</div>
+
+<p>So now we get interesting parts of town names. Sanity check (at least if you’re Swedish) is that <code class="highlighter-rouge">sta</code>, <code class="highlighter-rouge">hult</code> and so on are present.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>print ", ".join(df_features.sort('occurances', ascending=False).head(100)['feature'].values)
+
+sta, tor, ing, erg, nge, orp,  oc,  och , och , och, ch ,  och, vik, torp, ra , ber, ors, berg, und, sjö, tra, and, str, näs, ter, inge, stra, tad, stad, den, for, fors, mar, ken, sto, olm, ste, äst, storp, stor, lla, lle, all, dal, hol, ngs, holm, äll, lst, tra , ång, ers, orr, stra , red, ran, nda, arp, ham, ill, est, ung, äck, ten, ster, gen, jör, rby, jär, nne, cke, ult, amm, mma, lin, sun, ryd, ack, sby, äng, eby, byn, len, lan, sund, ling, ker, nna, mmar, löv, lun, ike, bäck, bro, tan, nga, bäc, ård, rst, tte
+</code></pre>
+</div>
+
+<p>I went ahead and took out the ones I deemed interesting. Now let’s plot them to se how they group geographically.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Helvetica Neue']
 %matplotlib inline
-from mpl_toolkits.basemap import Basemap
+
+def plot(data, mult=0.9):
+    """ Take data with 'part-of-towns-name' and color and plot it. Use `mult` for easy scaling of plot """
+    
+    def get_coordinates(townpart):
+        try:
+            townpart = townpart.decode('utf-8')
+        except:
+            pass
+        return df[df['town'].str.contains(townpart)]['lat'].values, df[df['town'].str.contains(townpart)]['lon'].values
+
+    fig = plt.figure(figsize=(20*mult, 16*mult), dpi=200)
+
+    m = Basemap(
+        projection='merc',
+        resolution='i', 
+        area_thresh=250,
+        llcrnrlon=9.5, 
+        llcrnrlat=54.5,
+        urcrnrlon=24.5, 
+        urcrnrlat=69.5
+    ) 
+
+    m.drawcoastlines(linewidth=0, color="#000000") 
+    m.drawcountries()
+    m.drawstates()
+    m.drawmapboundary()
+    m.fillcontinents(color='black', lake_color='white', zorder=0)
+    m.drawmapboundary(fill_color='white')
+    title = plt.title(u'Town names containing:', fontsize=16*mult) 
+    title.set_y(1.01) 
+
+    for townpart in data.keys():
+        lats, lons = get_coordinates(townpart)
+        x, y = m(lons, lats)
+        m.scatter(x, y, marker='o', s=30*mult, alpha=1, label=townpart, edgecolors='none', c=data[townpart])
+
+    plt.legend(loc=2, fontsize=16*mult)
+    plt.show()
+
+
+plot({
+    'arp': '#00ff00',
+    'holm': '#ff0000',
+})
 </code></pre>
 </div>
 
-<p>Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (<code class="highlighter-rouge">kav7</code>), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.</p>
+<p><img src="/assets/towns-atomic-parts_10_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>m = Basemap(resolution='c',
-            projection='kav7',
-            lat_0=0., # Center around
-            lon_0=0.) # lat 0, lon 0
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    'sta': '#ff00ff',
+    'ing': '#00ffff',
+})
 </code></pre>
 </div>
 
-<p>Kristoffer used graticlues (the grid) from a shapefile, <code class="highlighter-rouge">Basemap</code> handles this for us so let’s prepare what it need.</p>
+<p><img src="/assets/towns-atomic-parts_11_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>n_graticules = 18
-parallels = np.arange(-80., 90, n_graticules)
-meridians = np.arange(0., 360., n_graticules)
-lw = 1
-dashes = [5,7] # 5 dots, 7 spaces... repeat
-graticules_color = 'grey'
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    'hult': '#ffff00',
+    'fors': '#00ff00',
+})
 </code></pre>
 </div>
 
-<p>The rest should be quite self explainatory.</p>
+<p><img src="/assets/towns-atomic-parts_12_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>fig1 = plt.figure(figsize=(16,20))
-fig1.patch.set_facecolor('#e6e8ec')
-ax = fig1.add_axes([0.1,0.1,0.8,0.8])
-
-m.drawmapboundary(color='white', 
-                  linewidth=0.0, 
-                  fill_color='white')
-m.drawparallels(parallels, 
-                linewidth=lw, 
-                dashes=dashes, 
-                color=graticules_color)
-m.drawmeridians(meridians, 
-                linewidth=lw, 
-                dashes=dashes, 
-                color=graticules_color)
-m.drawcoastlines(linewidth=0)
-m.fillcontinents('black', 
-                 lake_color='white')
-m.drawcountries(linewidth=1, 
-                linestyle='solid', 
-                color='white', 
-                zorder=30)
-
-title = plt.title('World map (Kavrayskiy 7)', 
-                  fontsize=20) 
-title.set_y(1.03) # Move the title a bit for niceness
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    'vik': '#4f96c5',
+    'torp': '#00ff00',
+})
 </code></pre>
 </div>
 
-<p><img src="/assets/tutorial_7_0.png" alt="png" /></p>
+<p><img src="/assets/towns-atomic-parts_13_0.png" alt="png" /></p>
 
-<p>Let’s add some shapefiles. Basemap does this nicely for us with <code class="highlighter-rouge">readshapefile</code> and we use the same as Kristoffer found <a href="http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/">here</a>. Since we named it <code class="highlighter-rouge">populated_places</code>, <code class="highlighter-rouge">m.populated_places_info</code> will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check <code class="highlighter-rouge">m.yourname_info</code> out.</p>
-
-<p>We use <code class="highlighter-rouge">m.scatter</code> to make the bubble plot.</p>
-
-<div class="highlighter-rouge"><pre class="highlight"><code>m.readshapefile('shapefiles/ne_110m_populated_places/ne_110m_populated_places', 
-                name='populated_places', 
-                drawbounds=False, 
-                color='none')
-
-populations = [r['POP2000'] for r in m.populated_places_info]
-lats = [r['LATITUDE'] for r in m.populated_places_info]
-lons = [r['LONGITUDE'] for r in m.populated_places_info]
-x1, y1 = m(lons, lats) # Convert coords to projected place in figure
-m.scatter(x1, y1, 
-          s=np.array(populations)*0.05, 
-          marker="o", 
-          color='#32caf6',
-          zorder=10, 
-          alpha=0.8)
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    u'näs': '#b15928',
+    'ryd': '#08a060',
+})
 </code></pre>
 </div>
 
-<p><img src="/assets/tutorial_9_0.png" alt="png" /></p>
+<p><img src="/assets/towns-atomic-parts_14_0.png" alt="png" /></p>
 
-<p>But most likely a shapefile will contain a shape that you want to put on your map. Let’s put out the borders of the tectonic plates on our map. The tectonic plate shapefile can be found <a href="https://github.com/fraxen/tectonicplates">here</a>.</p>
-
-<div class="highlighter-rouge"><pre class="highlight"><code>m.readshapefile('shapefiles/tectonicplates-master/PB2002_plates', 
-                name='tectonic_plates', 
-                drawbounds=True, 
-                color='red')
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    'tuna': '#33cc33',
+    'hammar': '#ff0066',
+})
 </code></pre>
 </div>
 
-<p><img src="/assets/tutorial_11_0.png" alt="png" /></p>
+<p><img src="/assets/towns-atomic-parts_15_0.png" alt="png" /></p>
 
-<p>But you’ll probably also want to have control over the settings of the shapes e.g. color the Australia plate in a different way</p>
-
-<div class="highlighter-rouge"><pre class="highlight"><code>for info, shape in zip(m.tectonic_plates_info, 
-                       m.tectonic_plates):
-
-    if info['PlateName'] == "Australia":
-        x, y = zip(*shape) 
-        m.plot(x, y, marker=None, color='b')
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    u'köping': '#cc99ff',
+    u'bruk': '#ffff00',
+})
 </code></pre>
 </div>
 
-<p><img src="/assets/tutorial_13_0.png" alt="png" /></p>
+<p><img src="/assets/towns-atomic-parts_16_0.png" alt="png" /></p>
 
-<p>And perhaps you also want to fill the patch.</p>
-
-<div class="highlighter-rouge"><pre class="highlight"><code>from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import PathPatch
-        
-patches = []
-for info, shape in zip(m.tectonic_plates_info, 
-                       m.tectonic_plates):
-
-    if info['PlateName'] == "Australia":
-        patches.append(Polygon(np.array(shape), True))
-        
-ax.add_collection(PatchCollection(patches, 
-                                  facecolor='#32caf6', 
-                                  edgecolor='none', 
-                                  linewidths=1., 
-                                  alpha=0.5,
-                                  zorder=1))
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    'stor': '#00ccff',
+    'sund': '#e3c471',
+})
 </code></pre>
 </div>
 
-<p><img src="/assets/tutorial_15_0.png" alt="png" /></p>
+<p><img src="/assets/towns-atomic-parts_17_0.png" alt="png" /></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    'stad': '#ffcc00',
+    'berg': '#9933ff',
+})
+</code></pre>
+</div>
+
+<p><img src="/assets/towns-atomic-parts_18_0.png" alt="png" /></p>
+
+<p><code class="highlighter-rouge">Berg</code> is really common in the old mining regions called Bergslagen.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+    u'ån': '#ffccff',
+    u'ås': '#ee5657'
+})
+</code></pre>
+</div>
+
+<p><img src="/assets/towns-atomic-parts_20_0.png" alt="png" /></p>
+
 
   </article>
 

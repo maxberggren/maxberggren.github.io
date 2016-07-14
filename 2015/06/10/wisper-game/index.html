@@ -95,13 +95,13 @@
   </header>
 
   <article class="post-content">
-    <p>At least in Sweden there was this game where you sat in a ring of kids, one thought of a sentence which he/she wispered to the next kid, who passed it along and so on… Until the message reached its sender again. Usually the message was completely cray cray by then. </p>
+    <p>At least in Sweden there was this game where you sat in a ring of kids, one thought of a sentence which he/she wispered to the next kid, who passed it along and so on… Until the message reached its sender again. Usually the message was completely cray cray by then.</p>
 
-<p>This made me think about what kind of information is beeing lost when an translation is made between languages. Surely the translator puts its touch on it and maybe also cultural differences will be reflected in the translation. </p>
+<p>This made me think about what kind of information is beeing lost when an translation is made between languages. Surely the translator puts its touch on it and maybe also cultural differences will be reflected in the translation.</p>
 
-<p>So I built a small abstraction on top of the machine translation service Gengo.com which helped me try this out. I could now specify a <code>Route</code> like <code>['en', 'ko', 'en']</code>, making it take an English text, send it to the service for translation into Korean, and then from Korean back to English.</p>
+<p>So I built a small abstraction on top of the machine translation service Gengo.com which helped me try this out. I could now specify a <code class="highlighter-rouge">Route</code> like <code class="highlighter-rouge">['en', 'ko', 'en']</code>, making it take an English text, send it to the service for translation into Korean, and then from Korean back to English.</p>
 
-<pre><code>t = u""" When we tackle obstacles, we find hidden reserves of courage 
+<div class="highlighter-rouge"><pre class="highlight"><code>t = u""" When we tackle obstacles, we find hidden reserves of courage 
          and resilience we did not know we had. And it is only when we are 
          faced with failure do we realise that these resources were always 
          there within us. We only need to find them and move on with our lives. """
@@ -109,43 +109,49 @@
 r = Route(['en', 'ko', 'en'], start_text=t)
 r.start()
 </code></pre>
+</div>
 
 <p>This gives:</p>
 
-<pre><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+<div class="highlighter-rouge"><pre class="highlight"><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [ko] 우리가 어려움을 극복하고자 노력할 때, 우리는 전에 알지 못했던 우리 안에 숨겨진 용기와 회복력을 발견하게 된다.
 [en] When we try to overcome the difficulties, we will find out the hidden courage and resilience within us which we did not know before.
 </code></pre>
+</div>
 
 <p>The gist of the English sentences are the same, but the word order is completely different. I tried some more languages:</p>
 
 <h4 id="english--japanese--english">English → Japanese → English</h4>
 
-<pre><code>r = Route(['en', 'ja', 'en'], start_text=t)
+<div class="highlighter-rouge"><pre class="highlight"><code>r = Route(['en', 'ja', 'en'], start_text=t)
 </code></pre>
+</div>
 
 <p>Gives:</p>
 
-<pre><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+<div class="highlighter-rouge"><pre class="highlight"><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [ja] 問題に直面すると、人は自分が勇敢さや立ち直る力を兼ね備えているということに気が付く。
 [en] When faced with problems, people realize that they possess courage and the strength needed to stand back up. 
 </code></pre>
+</div>
 
 <h4 id="english--spanish--english">English → Spanish → English</h4>
 
-<pre><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+<div class="highlighter-rouge"><pre class="highlight"><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [es] Cuando afrontamos obstáculos, encontramos reservas ocultas de valor y adaptación que no sabíamos que teníamos.
 [en] When we face obstacles, we find hidden resources of courage and adaptation, which we didn't know about.
 </code></pre>
+</div>
 
 <h4 id="english--german--english">English → German → English</h4>
 
-<pre><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+<div class="highlighter-rouge"><pre class="highlight"><code>[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [de] Wenn wir Hindernisse angehen, finden wir versteckte Reserven von Mut und Belastbarkeit, von den wir nicht wussten, dass wir sie hatten.
 [en] If we consider the obstacles we will find hidden reserves of courage and resilience of which we had no idea that we were in possession of.
 </code></pre>
+</div>
 
-<p>So ultimately I would want to make every translation over a couple of hundred translators and pick the most common translation to rule out the individual translators touch. Then you might be able to find exciting insights by taking interesting routes. Maybe around the world? maybe just through Spanish countries or something like that. </p>
+<p>So ultimately I would want to make every translation over a couple of hundred translators and pick the most common translation to rule out the individual translators touch. Then you might be able to find exciting insights by taking interesting routes. Maybe around the world? maybe just through Spanish countries or something like that.</p>
 
 <p>Anyway, my credits ran out which halted my project so let me know if you want to fund me. The <a href="https://github.com/maxberggren/WorldWisper">code is on Github</a> albeit not very well documented or complete.</p>
 

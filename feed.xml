@@ -5,9 +5,221 @@
     <description></description>
     <link>http://maxberggren.se/</link>
     <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sat, 12 Sep 2015 13:28:22 +0200</pubDate>
-    <lastBuildDate>Sat, 12 Sep 2015 13:28:22 +0200</lastBuildDate>
-    <generator>Jekyll v2.5.1</generator>
+    <pubDate>Thu, 14 Jul 2016 20:44:12 +0200</pubDate>
+    <lastBuildDate>Thu, 14 Jul 2016 20:44:12 +0200</lastBuildDate>
+    <generator>Jekyll v3.1.6</generator>
+    
+      <item>
+        <title>Mapping town names atomic parts in Sweden</title>
+        <description>&lt;p&gt;Many towns in Sweden share the same atomic parts in their names. &lt;code class=&quot;highlighter-rouge&quot;&gt;-hult&lt;/code&gt; is common in Småland &lt;code class=&quot;highlighter-rouge&quot;&gt;-arp&lt;/code&gt; is common in Skåne. I got curious of how they cluster geographically. Let’s load up a &lt;code class=&quot;highlighter-rouge&quot;&gt;DataFrame&lt;/code&gt; with the &lt;a href=&quot;/assets/swe_towns_latlon.csv&quot;&gt;positions of Swedish towns&lt;/a&gt; that I made by querying Google for the position of every Swedish town I could find on Wikipedia.&lt;/p&gt;
+
+&lt;p&gt;This notebook is also available as a &lt;a href=&quot;https://gist.github.com/maxberggren/ccc0c9c3efd4b166ebbe4be9a4e54882&quot;&gt;Jupyter Notebook here&lt;/a&gt; if you want to execute the code yourself.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;import pandas as pd
+
+df = pd.read_csv(&#39;swe_towns_latlon.csv&#39;, encoding=&#39;utf-8&#39;)
+df[&#39;town&#39;] = df[&#39;town&#39;].str.lower()
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;And then do some crappy character n-gram extractions.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;def find_features(s):
+    feats = [s[i:i+7] for i in xrange(len(s)-6)] 
+    feats += [s[i:i+6] for i in xrange(len(s)-5)] 
+    feats += [s[i:i+5] for i in xrange(len(s)-4)] 
+    feats += [s[i:i+4] for i in xrange(len(s)-3)] 
+    feats += [s[i:i+3] for i in xrange(len(s)-2)] 
+    return feats
+
+features = []
+for town in df[&#39;town&#39;].values:
+    features.extend(find_features(town))
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;To be able to count the occurances.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;features = list(set(features))
+final_features = []
+occurances = []
+
+for feature in features:
+    try:
+        occurances.append(sum(df[&#39;town&#39;].str.contains(feature)))
+        final_features.append(feature)
+    except:
+        pass
+    
+df_features = pd.DataFrame({
+    &#39;feature&#39;: final_features, 
+    &#39;occurances&#39;: occurances 
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;So now we get interesting parts of town names. Sanity check (at least if you’re Swedish) is that &lt;code class=&quot;highlighter-rouge&quot;&gt;sta&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;hult&lt;/code&gt; and so on are present.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print &quot;, &quot;.join(df_features.sort(&#39;occurances&#39;, ascending=False).head(100)[&#39;feature&#39;].values)
+
+sta, tor, ing, erg, nge, orp,  oc,  och , och , och, ch ,  och, vik, torp, ra , ber, ors, berg, und, sjö, tra, and, str, näs, ter, inge, stra, tad, stad, den, for, fors, mar, ken, sto, olm, ste, äst, storp, stor, lla, lle, all, dal, hol, ngs, holm, äll, lst, tra , ång, ers, orr, stra , red, ran, nda, arp, ham, ill, est, ung, äck, ten, ster, gen, jör, rby, jär, nne, cke, ult, amm, mma, lin, sun, ryd, ack, sby, äng, eby, byn, len, lan, sund, ling, ker, nna, mmar, löv, lun, ike, bäck, bro, tan, nga, bäc, ård, rst, tte
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;I went ahead and took out the ones I deemed interesting. Now let’s plot them to se how they group geographically.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+rcParams[&#39;font.family&#39;] = &#39;sans-serif&#39;
+rcParams[&#39;font.sans-serif&#39;] = [&#39;Helvetica Neue&#39;]
+%matplotlib inline
+
+def plot(data, mult=0.9):
+    &quot;&quot;&quot; Take data with &#39;part-of-towns-name&#39; and color and plot it. Use `mult` for easy scaling of plot &quot;&quot;&quot;
+    
+    def get_coordinates(townpart):
+        try:
+            townpart = townpart.decode(&#39;utf-8&#39;)
+        except:
+            pass
+        return df[df[&#39;town&#39;].str.contains(townpart)][&#39;lat&#39;].values, df[df[&#39;town&#39;].str.contains(townpart)][&#39;lon&#39;].values
+
+    fig = plt.figure(figsize=(20*mult, 16*mult), dpi=200)
+
+    m = Basemap(
+        projection=&#39;merc&#39;,
+        resolution=&#39;i&#39;, 
+        area_thresh=250,
+        llcrnrlon=9.5, 
+        llcrnrlat=54.5,
+        urcrnrlon=24.5, 
+        urcrnrlat=69.5
+    ) 
+
+    m.drawcoastlines(linewidth=0, color=&quot;#000000&quot;) 
+    m.drawcountries()
+    m.drawstates()
+    m.drawmapboundary()
+    m.fillcontinents(color=&#39;black&#39;, lake_color=&#39;white&#39;, zorder=0)
+    m.drawmapboundary(fill_color=&#39;white&#39;)
+    title = plt.title(u&#39;Town names containing:&#39;, fontsize=16*mult) 
+    title.set_y(1.01) 
+
+    for townpart in data.keys():
+        lats, lons = get_coordinates(townpart)
+        x, y = m(lons, lats)
+        m.scatter(x, y, marker=&#39;o&#39;, s=30*mult, alpha=1, label=townpart, edgecolors=&#39;none&#39;, c=data[townpart])
+
+    plt.legend(loc=2, fontsize=16*mult)
+    plt.show()
+
+
+plot({
+    &#39;arp&#39;: &#39;#00ff00&#39;,
+    &#39;holm&#39;: &#39;#ff0000&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_10_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    &#39;sta&#39;: &#39;#ff00ff&#39;,
+    &#39;ing&#39;: &#39;#00ffff&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_11_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    &#39;hult&#39;: &#39;#ffff00&#39;,
+    &#39;fors&#39;: &#39;#00ff00&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_12_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    &#39;vik&#39;: &#39;#4f96c5&#39;,
+    &#39;torp&#39;: &#39;#00ff00&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_13_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    u&#39;näs&#39;: &#39;#b15928&#39;,
+    &#39;ryd&#39;: &#39;#08a060&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_14_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    &#39;tuna&#39;: &#39;#33cc33&#39;,
+    &#39;hammar&#39;: &#39;#ff0066&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    u&#39;köping&#39;: &#39;#cc99ff&#39;,
+    u&#39;bruk&#39;: &#39;#ffff00&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_16_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    &#39;stor&#39;: &#39;#00ccff&#39;,
+    &#39;sund&#39;: &#39;#e3c471&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_17_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    &#39;stad&#39;: &#39;#ffcc00&#39;,
+    &#39;berg&#39;: &#39;#9933ff&#39;,
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_18_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Berg&lt;/code&gt; is really common in the old mining regions called Bergslagen.&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;plot({
+    u&#39;ån&#39;: &#39;#ffccff&#39;,
+    u&#39;ås&#39;: &#39;#ee5657&#39;
+})
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_20_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+</description>
+        <pubDate>Thu, 14 Jul 2016 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/</guid>
+        
+        <category>python,</category>
+        
+        <category>maps,</category>
+        
+        <category>townnames</category>
+        
+        
+      </item>
     
       <item>
         <title>Introducing Shamebot3</title>
@@ -16,7 +228,7 @@
 &lt;p&gt;Therefore I built a &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;bot&lt;/a&gt; that:&lt;/p&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;Daily scans the major Swedish news sites for names of the form &lt;code&gt;Firstname Surname&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Daily scans the major Swedish news sites for names of the form &lt;code class=&quot;highlighter-rouge&quot;&gt;Firstname Surname&lt;/code&gt;.&lt;/li&gt;
   &lt;li&gt;Checks every firstname against Sweden Statistics (&lt;a href=&quot;http://www.scb.se/&quot;&gt;SCB&lt;/a&gt;) name database, counting every name used by more than 95 % of exclusivly one gender. Unisex names are therefore excluded.&lt;/li&gt;
   &lt;li&gt;Calculates the percentage of women represented by each site and logs it in a timeseries.&lt;/li&gt;
   &lt;li&gt;Tweets once every week and month with a graph ranking the Swedish news sites.&lt;/li&gt;
@@ -28,11 +240,11 @@
 
 &lt;p&gt;So basically it shames the least equal newspaper, hoping for retweets to add on to the feel of a angry online mob. In this analogy, twitter is the public shame pole of the village.&lt;/p&gt;
 
-&lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see from the graph). &lt;/p&gt;
+&lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see from the graph).&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/timeseries.png&quot; alt=&quot;timeseries&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service, that is funded by tax money (black line), comes out second. &lt;/p&gt;
+&lt;p&gt;Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service, that is funded by tax money (black line), comes out second.&lt;/p&gt;
 
 &lt;p&gt;When more data is avalible I will probably revisit this again.&lt;/p&gt;
 
@@ -59,35 +271,38 @@
 
 &lt;p&gt;Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an &lt;a href=&quot;https://gist.github.com/maxberggren/45904cab7550ba73fa03/5e698a92c9b538ab3fbcb85c6092af06e34bcc76&quot;&gt;Jupyter Notebook&lt;/a&gt; that you can download and run on our local machine.&lt;/p&gt;
 
-&lt;p&gt;To start with you need the packages &lt;code&gt;numpy&lt;/code&gt; and &lt;code&gt;matplotlib basemap&lt;/code&gt;. The latter should only be installed through &lt;a href=&quot;http://continuum.io/downloads&quot;&gt;Anaconda&lt;/a&gt; which is your, from here on, favorite Python package installer. So let’s load them up.&lt;/p&gt;
+&lt;p&gt;To start with you need the packages &lt;code class=&quot;highlighter-rouge&quot;&gt;numpy&lt;/code&gt; and &lt;code class=&quot;highlighter-rouge&quot;&gt;matplotlib basemap&lt;/code&gt;. The latter should only be installed through &lt;a href=&quot;http://continuum.io/downloads&quot;&gt;Anaconda&lt;/a&gt; which is your, from here on, favorite Python package installer. So let’s load them up.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;import numpy as np
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;import numpy as np
 import matplotlib.pyplot as plt
 %matplotlib inline
 from mpl_toolkits.basemap import Basemap
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
-&lt;p&gt;Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (&lt;code&gt;kav7&lt;/code&gt;), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.&lt;/p&gt;
+&lt;p&gt;Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (&lt;code class=&quot;highlighter-rouge&quot;&gt;kav7&lt;/code&gt;), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;m = Basemap(resolution=&#39;c&#39;,
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;m = Basemap(resolution=&#39;c&#39;,
             projection=&#39;kav7&#39;,
             lat_0=0., # Center around
             lon_0=0.) # lat 0, lon 0
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
-&lt;p&gt;Kristoffer used graticlues (the grid) from a shapefile, &lt;code&gt;Basemap&lt;/code&gt; handles this for us so let’s prepare what it need.&lt;/p&gt;
+&lt;p&gt;Kristoffer used graticlues (the grid) from a shapefile, &lt;code class=&quot;highlighter-rouge&quot;&gt;Basemap&lt;/code&gt; handles this for us so let’s prepare what it need.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;n_graticules = 18
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;n_graticules = 18
 parallels = np.arange(-80., 90, n_graticules)
 meridians = np.arange(0., 360., n_graticules)
 lw = 1
 dashes = [5,7] # 5 dots, 7 spaces... repeat
 graticules_color = &#39;grey&#39;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;The rest should be quite self explainatory.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;fig1 = plt.figure(figsize=(16,20))
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;fig1 = plt.figure(figsize=(16,20))
 fig1.patch.set_facecolor(&#39;#e6e8ec&#39;)
 ax = fig1.add_axes([0.1,0.1,0.8,0.8])
 
@@ -114,14 +329,15 @@ title = plt.title(&#39;World map (Kavrayskiy 7)&#39;,
                   fontsize=20) 
 title.set_y(1.03) # Move the title a bit for niceness
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_7_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;Let’s add some shapefiles. Basemap does this nicely for us with &lt;code&gt;readshapefile&lt;/code&gt; and we use the same as Kristoffer found &lt;a href=&quot;http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/&quot;&gt;here&lt;/a&gt;. Since we named it &lt;code&gt;populated_places&lt;/code&gt;, &lt;code&gt;m.populated_places_info&lt;/code&gt; will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check &lt;code&gt;m.yourname_info&lt;/code&gt; out. &lt;/p&gt;
+&lt;p&gt;Let’s add some shapefiles. Basemap does this nicely for us with &lt;code class=&quot;highlighter-rouge&quot;&gt;readshapefile&lt;/code&gt; and we use the same as Kristoffer found &lt;a href=&quot;http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/&quot;&gt;here&lt;/a&gt;. Since we named it &lt;code class=&quot;highlighter-rouge&quot;&gt;populated_places&lt;/code&gt;, &lt;code class=&quot;highlighter-rouge&quot;&gt;m.populated_places_info&lt;/code&gt; will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check &lt;code class=&quot;highlighter-rouge&quot;&gt;m.yourname_info&lt;/code&gt; out.&lt;/p&gt;
 
-&lt;p&gt;We use &lt;code&gt;m.scatter&lt;/code&gt; to make the bubble plot.&lt;/p&gt;
+&lt;p&gt;We use &lt;code class=&quot;highlighter-rouge&quot;&gt;m.scatter&lt;/code&gt; to make the bubble plot.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;m.readshapefile(&#39;shapefiles/ne_110m_populated_places/ne_110m_populated_places&#39;, 
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;m.readshapefile(&#39;shapefiles/ne_110m_populated_places/ne_110m_populated_places&#39;, 
                 name=&#39;populated_places&#39;, 
                 drawbounds=False, 
                 color=&#39;none&#39;)
@@ -137,34 +353,37 @@ m.scatter(x1, y1,
           zorder=10, 
           alpha=0.8)
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_9_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;But most likely a shapefile will contain a shape that you want to put on your map. Let’s put out the borders of the tectonic plates on our map. The tectonic plate shapefile can be found &lt;a href=&quot;https://github.com/fraxen/tectonicplates&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;m.readshapefile(&#39;shapefiles/tectonicplates-master/PB2002_plates&#39;, 
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;m.readshapefile(&#39;shapefiles/tectonicplates-master/PB2002_plates&#39;, 
                 name=&#39;tectonic_plates&#39;, 
                 drawbounds=True, 
                 color=&#39;red&#39;)
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_11_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;But you’ll probably also want to have control over the settings of the shapes e.g. color the Australia plate in a different way&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;for info, shape in zip(m.tectonic_plates_info, 
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;for info, shape in zip(m.tectonic_plates_info, 
                        m.tectonic_plates):
 
     if info[&#39;PlateName&#39;] == &quot;Australia&quot;:
         x, y = zip(*shape) 
         m.plot(x, y, marker=None, color=&#39;b&#39;)
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_13_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;And perhaps you also want to fill the patch.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;from matplotlib.patches import Polygon
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import PathPatch
         
@@ -182,6 +401,7 @@ ax.add_collection(PatchCollection(patches,
                                   alpha=0.5,
                                   zorder=1))
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 </description>
@@ -202,13 +422,13 @@ ax.add_collection(PatchCollection(patches,
     
       <item>
         <title>Wisper Game with code and a translation service</title>
-        <description>&lt;p&gt;At least in Sweden there was this game where you sat in a ring of kids, one thought of a sentence which he/she wispered to the next kid, who passed it along and so on… Until the message reached its sender again. Usually the message was completely cray cray by then. &lt;/p&gt;
+        <description>&lt;p&gt;At least in Sweden there was this game where you sat in a ring of kids, one thought of a sentence which he/she wispered to the next kid, who passed it along and so on… Until the message reached its sender again. Usually the message was completely cray cray by then.&lt;/p&gt;
 
-&lt;p&gt;This made me think about what kind of information is beeing lost when an translation is made between languages. Surely the translator puts its touch on it and maybe also cultural differences will be reflected in the translation. &lt;/p&gt;
+&lt;p&gt;This made me think about what kind of information is beeing lost when an translation is made between languages. Surely the translator puts its touch on it and maybe also cultural differences will be reflected in the translation.&lt;/p&gt;
 
-&lt;p&gt;So I built a small abstraction on top of the machine translation service Gengo.com which helped me try this out. I could now specify a &lt;code&gt;Route&lt;/code&gt; like &lt;code&gt;[&#39;en&#39;, &#39;ko&#39;, &#39;en&#39;]&lt;/code&gt;, making it take an English text, send it to the service for translation into Korean, and then from Korean back to English.&lt;/p&gt;
+&lt;p&gt;So I built a small abstraction on top of the machine translation service Gengo.com which helped me try this out. I could now specify a &lt;code class=&quot;highlighter-rouge&quot;&gt;Route&lt;/code&gt; like &lt;code class=&quot;highlighter-rouge&quot;&gt;[&#39;en&#39;, &#39;ko&#39;, &#39;en&#39;]&lt;/code&gt;, making it take an English text, send it to the service for translation into Korean, and then from Korean back to English.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;t = u&quot;&quot;&quot; When we tackle obstacles, we find hidden reserves of courage 
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;t = u&quot;&quot;&quot; When we tackle obstacles, we find hidden reserves of courage 
          and resilience we did not know we had. And it is only when we are 
          faced with failure do we realise that these resources were always 
          there within us. We only need to find them and move on with our lives. &quot;&quot;&quot;
@@ -216,43 +436,49 @@ ax.add_collection(PatchCollection(patches,
 r = Route([&#39;en&#39;, &#39;ko&#39;, &#39;en&#39;], start_text=t)
 r.start()
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;This gives:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [ko] 우리가 어려움을 극복하고자 노력할 때, 우리는 전에 알지 못했던 우리 안에 숨겨진 용기와 회복력을 발견하게 된다.
 [en] When we try to overcome the difficulties, we will find out the hidden courage and resilience within us which we did not know before.
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;The gist of the English sentences are the same, but the word order is completely different. I tried some more languages:&lt;/p&gt;
 
 &lt;h4 id=&quot;english--japanese--english&quot;&gt;English → Japanese → English&lt;/h4&gt;
 
-&lt;pre&gt;&lt;code&gt;r = Route([&#39;en&#39;, &#39;ja&#39;, &#39;en&#39;], start_text=t)
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;r = Route([&#39;en&#39;, &#39;ja&#39;, &#39;en&#39;], start_text=t)
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Gives:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [ja] 問題に直面すると、人は自分が勇敢さや立ち直る力を兼ね備えているということに気が付く。
 [en] When faced with problems, people realize that they possess courage and the strength needed to stand back up. 
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;h4 id=&quot;english--spanish--english&quot;&gt;English → Spanish → English&lt;/h4&gt;
 
-&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [es] Cuando afrontamos obstáculos, encontramos reservas ocultas de valor y adaptación que no sabíamos que teníamos.
 [en] When we face obstacles, we find hidden resources of courage and adaptation, which we didn&#39;t know about.
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;h4 id=&quot;english--german--english&quot;&gt;English → German → English&lt;/h4&gt;
 
-&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
 [de] Wenn wir Hindernisse angehen, finden wir versteckte Reserven von Mut und Belastbarkeit, von den wir nicht wussten, dass wir sie hatten.
 [en] If we consider the obstacles we will find hidden reserves of courage and resilience of which we had no idea that we were in possession of.
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
-&lt;p&gt;So ultimately I would want to make every translation over a couple of hundred translators and pick the most common translation to rule out the individual translators touch. Then you might be able to find exciting insights by taking interesting routes. Maybe around the world? maybe just through Spanish countries or something like that. &lt;/p&gt;
+&lt;p&gt;So ultimately I would want to make every translation over a couple of hundred translators and pick the most common translation to rule out the individual translators touch. Then you might be able to find exciting insights by taking interesting routes. Maybe around the world? maybe just through Spanish countries or something like that.&lt;/p&gt;
 
 &lt;p&gt;Anyway, my credits ran out which halted my project so let me know if you want to fund me. The &lt;a href=&quot;https://github.com/maxberggren/WorldWisper&quot;&gt;code is on Github&lt;/a&gt; albeit not very well documented or complete.&lt;/p&gt;
 
@@ -314,7 +540,7 @@ If you loose. Double your bet on heads&lt;/li&gt;
 
 &lt;p&gt;A roulette wheel is as close to a coin flip we will get in a casino. So let’s try that. First we need a function acting roulette wheel:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;def spinn_wheel():
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;def spinn_wheel():
     result = randrange(37)
     
     if result == 0: # Green
@@ -324,10 +550,11 @@ If you loose. Double your bet on heads&lt;/li&gt;
     if result in range(19,36): # Black
         return &quot;B&quot; 
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;We set up some variables and libraries that we will use&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;balance = 0 # hopefully this will be positive
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;balance = 0 # hopefully this will be positive
 stake = 1 # start at 1 as bet
 bet = &quot;B&quot; # always bet on black
 
@@ -336,10 +563,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 %matplotlib inline
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Let’s make 100 bets and follow the strategy:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;for i in range(100):
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;for i in range(100):
 
     color = spinn_wheel()
 
@@ -354,11 +582,13 @@ import numpy as np
     
 plt.show()
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/martingale_5_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;print balance
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print balance
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;31&lt;/p&gt;
@@ -366,8 +596,9 @@ plt.show()
 
 &lt;p&gt;So after 100 bets we are at plus. But look at that, we where down -250 on a loosing streak where we had to keep doubling our bet to get back on track. Looks like a loosing streak of about 8. What’s the probability of that?&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;print 0.5**8
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print 0.5**8
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;0.00390625&lt;/p&gt;
@@ -377,8 +608,9 @@ plt.show()
 
 &lt;p&gt;How about a loosing streak of 12. How much do we need to get us out of that situation?&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;print 2**12
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print 2**12
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;4096&lt;/p&gt;
@@ -386,32 +618,36 @@ plt.show()
 
 &lt;p&gt;Well, it’s starting to hurt.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;print 2**13
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print 2**13
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;8192&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;pre&gt;&lt;code&gt;print 2**14
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print 2**14
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;16384&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;pre&gt;&lt;code&gt;print 2**15
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print 2**15
 to_much = 2**15
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;32768&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;p&gt;Ok, 32768 would at least for me be alot more than I could manage to get in cash to get me out of the situation (if in dollars). So a loosing streak of 15 is really bad. How probable is that to happend? &lt;/p&gt;
+&lt;p&gt;Ok, 32768 would at least for me be alot more than I could manage to get in cash to get me out of the situation (if in dollars). So a loosing streak of 15 is really bad. How probable is that to happend?&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;print 0.5**15
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print 0.5**15
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;3.0517578125e-05&lt;/p&gt;
@@ -419,7 +655,7 @@ to_much = 2**15
 
 &lt;p&gt;Not very probable. So let’s try the above strategy a thousand times to try to make some money:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;balances = [] # let&#39;s log every end balance
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;balances = [] # let&#39;s log every end balance
 
 for i in range(1000):
     balance = 0 
@@ -450,6 +686,7 @@ for i in range(1000):
 
 print balances
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;[47, 40, 51, 39, 41, 48, 52, 57, 8, 42, 43, 44, 37, 35, 39, 49, 12, 46, 51, 49, 41, 56, 48, 50, 42, 45, 42, 46, 41, 50, 47, 35, 55, 44, 42, 56, 38, 50, 36, 41, 40, 42, 45, 43, 46, 26, 49, 41, 47, 38, 39, 39, 49, 55, 50, 39, 47, 34, 44, 30, 47, 43, 48, 53, 29, 49, 43, 45, 45, 44, 40, 46, 41, 40, 39, 49, 39, 40, 50, 39, 53, 37, 42, 43, 38, 42, 25, 49, 44, 39, 48, 45, 47, 48, 39, 41, 50, 45, 43, 38, 50, 37, 49, 46, 38, 54, 50, 51, 42, 42, 37, 44, 39, 44, 48, 51, 37, 12, 52, 42, 43, 37, 53, 51, 44, 49, 47, 47, 49, 40, 51, 51, 41, 40, 47, 47, 40, 46, 42, 39, 37, 47, 43, 32, 47, 50, 43, 37, 39, 42, 50, 46, 48, 42, 53, 35, 39, 48, 42, 57, 43, 44, 46, 44, 44, 50, 46, 42, 45, 43, 51, 40, 44, 47, 40, 30, 49, 35, 45, 9, 43, 50, 46, 18, 56, 42, 53, 45, 45, 44, 47, 49, 45, 51, 47, 30, 45, 48, 49, 44, 49, 47, 37, 40, 45, 39, 53, 41, 54, 37, 49, 46, 38, 49, 46, 49, 46, 55, 45, 61, 33, 48, 45, 47, 44, 43, 47, 47, 42, 33, 49, 41, 42, 45, 47, 38, 45, 49, 44, 34, 41, 48, 45, 44, 24, 47, 47, 41, 50, 46, 45, 43, 49, 40, 49, 45, 51, 46, 46, 41, 36, 44, 46, 50, 47, 45, 48, 36, 38, 33, 41, 44, 38, 35, 36, 41, 43, 45, 53, 53, 59, 49, 35, 44, 46, 40, 44, 42, 45, 43, 49, 55, 46, 43, 50, 45, 63, 48, 40, 46, 49, 39, 48, 33, 53, 35, 53, 46, 44, 53, 50, 41, 38, 50, 43, 48, 45, 33, 30, 34, 42, 46, 50, 49, 38, 41, 45, 39, 45, 46, 31, 45, 40, 48, 42, 58, 48, 36, 44, 48, 37, 40, 48, 47, 42, 41, 39, 43, 51, 15, 49, 30, 46, 47, 49, 44, 44, 52, 50, 45, 50, 46, 48, 29, 50, 47, 45, 40, 40, 49, 44, 41, 38, 44, 48, 48, 44, 49, 46, 40, 43, 48, 45, 45, 37, 47, 51, 48, 49, 41, 43, 48, 41, 39, 40, 42, 51, 41, -65521, 40, 44, 50, 45, 53, 38, 56, 50, 49, 49, 34, 40, 52, 45, 51, 51, 47, 42, 37, 44, 44, 49, 44, 48, 48, 47, 38, 50, 44, 28, 42, 60, 37, 45, 51, 44, 49, 45, 39, 46, 40, 38, 40, 46, 45, 43, 46, 26, 56, 44, 34, 28, 45, 38, 37, 49, 48, 38, 47, 56, 43, 50, 41, 40, 45, 37, 49, 40, 35, 55, 35, 41, 43, 46, 42, 40, 43, 51, 49, 59, 44, 35, 45, 42, 42, 12, 43, 47, 45, 48, 52, 22, 52, 45, 49, 56, 32, 47, 43, 53, 43, 46, 41, 53, 41, 46, 34, 46, 46, 46, 45, 45, 52, 42, 50, 44, 46, 50, 48, 38, 36, 43, 43, 56, 49, 51, 54, 38, 36, 37, 40, 46, 37, 34, 34, 47, 53, 39, 45, 52, 49, 48, 42, 52, 39, 50, 42, 41, 41, 46, 49, 34, 41, 46, 50, 22, 48, 42, 47, 51, 46, 45, 49, 37, 36, 39, 47, 46, 37, 39, 52, 35, 47, 40, 51, 47, 47, 22, 35, 44, 47, 45, 41, 44, 44, 43, 50, 41, 40, 49, 39, 43, 45, 48, 45, 43, 37, 26, 51, 46, 42, 43, 47, 52, 42, 44, 39, 36, 46, 42, 32, 38, 43, 52, 42, 15, 23, 38, 45, 43, 50, 48, 38, -65528, 46, 56, 53, 49, 57, 47, 54, 53, 51, 44, 45, 41, 39, 35, 36, 50, 44, 42, 45, 43, 37, 49, 45, 54, 48, 10, 45, 49, 38, 51, 46, 52, 48, 33, 50, 52, 43, 38, 46, 43, 45, 47, 45, 58, 48, 49, 47, 50, 40, 36, 46, 30, 44, 49, 43, 44, 51, 48, 54, 51, 38, 36, 45, 43, 59, 49, 46, 44, 41, 34, 48, 41, 9, 43, 33, 56, 53, 49, 48, 34, 47, 32, 47, 46, 48, 28, 26, 27, 34, 37, 42, 45, 35, 44, 31, 46, 42, 35, 35, 47, 41, 55, 47, 32, 48, 44, 42, 48, 45, 35, 55, 46, 45, 45, 49, 47, 46, 42, 39, 44, 49, 38, 39, 33, 40, 39, 33, 41, 37, 42, 36, 47, 47, 39, 42, 36, 32, 43, 44, 44, 51, 51, 43, 32, 48, 46, 50, 48, 31, 43, 40, 50, 51, 39, 48, 44, 43, 47, 40, 42, 43, 42, 38, 44, 38, 43, 52, 36, 39, 47, 44, 50, 48, 36, 45, 45, 45, 45, 41, 55, 43, 36, 48, 44, 44, 43, 41, 51, 49, 9, 44, 47, 42, 14, 43, 45, 30, 48, 40, 48, 46, 53, 42, 29, 44, 35, 53, 42, 44, 39, 41, 45, 51, 38, 39, 53, 48, 44, 42, 43, 38, 38, 3, 54, 36, 36, 44, 42, 49, 41, 43, 50, 41, 39, 47, 46, 57, 52, 36, 52, 46, 49, 40, 38, 37, 44, 41, 36, 49, 43, 48, 35, 38, 41, 54, 46, 37, 51, 34, 45, 45, 39, 40, 38, 34, 53, 45, 32, 40, 45, 50, 47, 27, 44, 37, 45, 45, 40, 35, 39, 52, 52, 51, 43, 44, 33, 15, 50, 47, 48, 41, 48, 46, 49, 46, 37, 39, 47, 50, 51, 42, 44, 42, 44, 43, 39, 37, 52, 40, 40, 47, 26, 45, 43, 51, 33, 37, 44, 48, 49, 49, 60, 38, 49, 58, 15, 48, 46, 42, 47, 48, 52, 42, 49, 38, 40, 43, 44, 45, 36, 36, 45, 39, 39, 51, 55, 51, 49, 47, 44, 41, 45, 33, 40, 38, 38, 37, 51, 25, 37, 44, 47, 50, 55, 47, 44, 41, 51, 44, 38, 44, 35, 41, 29, 38, 48, 43]&lt;/p&gt;
@@ -457,8 +694,9 @@ print balances
 
 &lt;p&gt;Well, that’s not good. We are on our way to make us some profit, and the bam all our savings are gone!&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;print sum(balances)
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;print sum(balances)
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;-87704&lt;/p&gt;
@@ -482,13 +720,13 @@ print balances
         <title>People named Adolf in Sweden</title>
         <description>&lt;p&gt;Not sure this holds the quality that I was planning for this blog. But since I have nothing better to post in awatening of some exciting stuff that I can’t post just yet.&lt;/p&gt;
 
-&lt;p&gt;How does a world war and a holocaust affect the popularity of a name? That is the question. More specifically the name was Adolf and Sweden Statistics comes to the rescue! I marked some years of importance. &lt;/p&gt;
+&lt;p&gt;How does a world war and a holocaust affect the popularity of a name? That is the question. More specifically the name was Adolf and Sweden Statistics comes to the rescue! I marked some years of importance.&lt;/p&gt;
 
 &lt;p&gt;&lt;a href=&quot;/assets/adolf.png&quot;&gt;&lt;img src=&quot;/assets/adolf.png&quot; alt=&quot;Popularity of the name Adolf&quot; title=&quot;Popularity of the name Adolf&quot; /&gt;&lt;/a&gt;&lt;/p&gt;
 
 &lt;h6 id=&quot;percent-people-named-adolf-in-sweden&quot;&gt;Percent people named Adolf in Sweden&lt;/h6&gt;
 
-&lt;p&gt;Looks like the decline starts a year or two before Hitler takes power as reichskanzler 1933. I guess everybody in Sweden knew his name and politics by then and choose not to name their babies to Adolf as frequently. &lt;/p&gt;
+&lt;p&gt;Looks like the decline starts a year or two before Hitler takes power as reichskanzler 1933. I guess everybody in Sweden knew his name and politics by then and choose not to name their babies to Adolf as frequently.&lt;/p&gt;
 </description>
         <pubDate>Fri, 27 Feb 2015 17:39:50 +0100</pubDate>
         <link>http://maxberggren.se/2015/02/27/people-named-adolf/</link>
@@ -505,7 +743,7 @@ print balances
 
 &lt;p&gt;I have about 60 GB of Swedish blog data. Not just because I’m a web crawler freak and/or creep, but because that I use it in my work on finding emerging words in the Swedish language. The nice thing about this data is that it has metadata of where people are writing from.&lt;/p&gt;
 
-&lt;p&gt;This data therefore be used in visualizing the cold trends spatially, and of course – in what better way than a gif? &lt;/p&gt;
+&lt;p&gt;This data therefore be used in visualizing the cold trends spatially, and of course – in what better way than a gif?&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/sjukdomskarta_2013_korr.gif&quot; alt=&quot;Cold trend of 2013 in Sweden&quot; title=&quot;Cold trend of 2013 in Sweden&quot; /&gt;&lt;/p&gt;
 
@@ -513,7 +751,7 @@ print balances
 
 &lt;p&gt;See how people stops talking about colds symptoms in June? And as soon as kindergarten opens again, hell breaks loose again.&lt;/p&gt;
 
-&lt;p&gt;You might also be able to get a feel for how symptoms travels between cities if you squint. &lt;/p&gt;
+&lt;p&gt;You might also be able to get a feel for how symptoms travels between cities if you squint.&lt;/p&gt;
 
 &lt;p&gt;And don’t mind the chronically ill blogger in Sundsvall that makes that look like a hot zone…&lt;/p&gt;
 </description>
@@ -542,7 +780,6 @@ be viewed as some sort of fictional zombie outbreak. That said, let’s get down
 to it!&lt;/p&gt;
 
 &lt;script type=&quot;math/tex; mode=display&quot;&gt;% &lt;![CDATA[
-
 \begin{align}
 u(t) &amp; = \begin{pmatrix} S \\ I \\ R \end{pmatrix} &amp; f(u)   = u&#39;(t) =
 \begin{pmatrix} S&#39; \\ I&#39; \\ R&#39; \end{pmatrix}  = \begin{pmatrix}
@@ -550,8 +787,7 @@ u(t) &amp; = \begin{pmatrix} S \\ I \\ R \end{pmatrix} &amp; f(u)   = u&#39;(t) 
   \beta I S - \gamma I  \\
  \gamma I
 \end{pmatrix}
-\end{align}
- %]]&gt;&lt;/script&gt;
+\end{align} %]]&gt;&lt;/script&gt;
 
 &lt;p&gt;This is what’s called a &lt;a href=&quot;&quot;&gt;SIR model&lt;/a&gt; where the letters S, I and R reflects
 different states an individual can have in a zombie outbreak:&lt;/p&gt;
@@ -590,8 +826,7 @@ distribution of S/I/R. So let’s fix that!&lt;/p&gt;
 &lt;p&gt;One approach is to divide Sweden and the Nordic countries into a grid where
 every cell can infect the nearby. This can be described as follows:&lt;/p&gt;
 
-&lt;script type=&quot;math/tex; mode=display&quot;&gt;
-\begin{align}
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;\begin{align}
  f(u)   = u&#39;(t)  = \begin{pmatrix} S&#39; \\ I&#39; \\ R&#39; \end{pmatrix} =
 \begin{pmatrix}
   -\beta \left(S_{i,j}I_{i,j} + S_{i-1,j}I_{i-1,j} + S_{i+1,j}I_{i+1,j} +
@@ -600,8 +835,7 @@ S_{i,j-1}I_{i,j-1} + S_{i,j+1}I_{i,j+1}\right)  \\
 S_{i,j-1}I_{i,j-1} + S_{i,j+1}I_{i,j+1}\right) - \gamma I_{i,j}  \\
  \gamma I_{i,j}
 \end{pmatrix}
-\end{align}
-&lt;/script&gt;
+\end{align}&lt;/script&gt;
 
 &lt;p&gt;Where for example &lt;script type=&quot;math/tex&quot;&gt;S_{ij}&lt;/script&gt; being one cell and &lt;script type=&quot;math/tex&quot;&gt;S_{i-1j}&lt;/script&gt;, &lt;script type=&quot;math/tex&quot;&gt;S_{i+1j}&lt;/script&gt;,
 &lt;script type=&quot;math/tex&quot;&gt;S_{ij-1}&lt;/script&gt; and &lt;script type=&quot;math/tex&quot;&gt;S_{ij+1}&lt;/script&gt; being the surrounding cells (let’s not make our
@@ -610,96 +844,99 @@ brain eaten).&lt;/p&gt;
 
 &lt;p&gt;Initializing some stuff.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import numpy as np
-import math
-import matplotlib.pyplot as plt    
-%matplotlib inline
-from matplotlib import rcParams
-import matplotlib.image as mpimg
-rcParams[&#39;font.family&#39;] = &#39;serif&#39;
-rcParams[&#39;font.size&#39;] = 16
-rcParams[&#39;figure.figsize&#39;] = 12, 8
-from PIL import Image
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;numpy&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;np&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;math&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;matplotlib.pyplot&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;plt&lt;/span&gt;    
+&lt;span class=&quot;o&quot;&gt;%&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;matplotlib&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;inline&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;matplotlib&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;rcParams&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;matplotlib.image&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;mpimg&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;rcParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;font.family&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&#39;serif&#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;rcParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;font.size&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;16&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;rcParams&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;figure.figsize&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;PIL&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Image&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Some appropriate beta and gamma making sure to wipe out most of the country.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;beta = 0.010
-gamma = 1
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;beta&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;0.010&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;gamma&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Remember the definition of a derivative? With some rearranging it can actually
 be used to approximate  the next step of the function when the derivative is
 known and $\Delta t$ is assumed to be small. And we have already stated $u’(t)$.&lt;/p&gt;
 
-&lt;script type=&quot;math/tex; mode=display&quot;&gt;
-u&#39;(t) = \mathop {\lim }\limits_{\Delta t \to 0} \frac{ {u\left( {t + \Delta t }
-\right) - u\left( t \right)}}{\Delta t}  &lt;/script&gt;
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;u&#39;(t) = \mathop {\lim }\limits_{\Delta t \to 0} \frac{ {u\left( {t + \Delta t }
+\right) - u\left( t \right)}}{\Delta t}&lt;/script&gt;
 
-&lt;script type=&quot;math/tex; mode=display&quot;&gt;
-u&#39; \Delta t + u\left( t \right)= {u\left( {t + \Delta t } \right)}  &lt;/script&gt;
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;u&#39; \Delta t + u\left( t \right)= {u\left( {t + \Delta t } \right)}&lt;/script&gt;
 
 &lt;p&gt;Remember from before&lt;/p&gt;
 
-&lt;script type=&quot;math/tex; mode=display&quot;&gt;  f(u)   = u&#39;(t)&lt;/script&gt;
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;f(u)   = u&#39;(t)&lt;/script&gt;
 
 &lt;p&gt;And let’s call $u\left( {t + \Delta t } \right)$ which is the function $u$ in
 the next time step for $u_{n+1}$, and $u(t) = u_n$ which is the current time
 step.&lt;/p&gt;
 
-&lt;script type=&quot;math/tex; mode=display&quot;&gt;  u_{n+1} = f(u)\Delta t + u_n  &lt;/script&gt;
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;u_{n+1} = f(u)\Delta t + u_n&lt;/script&gt;
 
 &lt;p&gt;This is called &lt;a href=&quot;http://en.wikipedia.org/wiki/Euler_method&quot;&gt;the Euler method&lt;/a&gt;.
 Let’s write it in code:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def euler_step(u, f, dt):
-    return u + dt * f(u)
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;euler_step&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;u&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;We also need $f(u)$ in code. This uses some nifty array operations by the
 goodness of numpy. I just might get back to that in another blog post, because
 they’re great and might need some more explaining. But for now this will do.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def f(u):
-    S = u[0]
-    I = u[1]
-    R = u[2]
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;I&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;R&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
     
-    new = np.array([-beta*(S[1:-1, 1:-1]*I[1:-1, 1:-1] + \
-                            S[0:-2, 1:-1]*I[0:-2, 1:-1] + \
-                            S[2:, 1:-1]*I[2:, 1:-1] + \
-                            S[1:-1, 0:-2]*I[1:-1, 0:-2] + \
-                            S[1:-1, 2:]*I[1:-1, 2:]),
-                     beta*(S[1:-1, 1:-1]*I[1:-1, 1:-1] + \
-                            S[0:-2, 1:-1]*I[0:-2, 1:-1] + \
-                            S[2:, 1:-1]*I[2:, 1:-1] + \
-                            S[1:-1, 0:-2]*I[1:-1, 0:-2] + \
-                            S[1:-1, 2:]*I[1:-1, 2:]) - gamma*I[1:-1, 1:-1],
-                     gamma*I[1:-1, 1:-1]
-                    ])
+    &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;array&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;([&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;beta&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]),&lt;/span&gt;
+                     &lt;span class=&quot;n&quot;&gt;beta&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; \
+                            &lt;span class=&quot;n&quot;&gt;S&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:])&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;gamma&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt;
+                     &lt;span class=&quot;n&quot;&gt;gamma&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;I&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+                    &lt;span class=&quot;p&quot;&gt;])&lt;/span&gt;
     
-    padding = np.zeros_like(u)
-    padding[:,1:-1,1:-1] = new
-    padding[0][padding[0] &amp;lt; 0] = 0
-    padding[0][padding[0] &amp;gt; 255] = 255
-    padding[1][padding[1] &amp;lt; 0] = 0
-    padding[1][padding[1] &amp;gt; 255] = 255
-    padding[2][padding[2] &amp;lt; 0] = 0
-    padding[2][padding[2] &amp;gt; 255] = 255
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zeros_like&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[:,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;new&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;
     
-    return padding
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;padding&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Here I import an map with the population density of the Nordic countries and
 downsample it to make the solving time resonably fast.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from PIL import Image
-img = Image.open(&#39;popdens2.png&#39;)
-img = img.resize((img.size[0]/2,img.size[1]/2)) 
-img = 255 - np.asarray(img)
-imgplot = plt.imshow(img)
-imgplot.set_interpolation(&#39;nearest&#39;)
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;PIL&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Image&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;Image&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;popdens2.png&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;resize&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;size&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;asarray&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;imgplot&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;imshow&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;imgplot&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;set_interpolation&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&#39;nearest&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/SweEbola_16_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 
@@ -709,67 +946,73 @@ imgplot.set_interpolation(&#39;nearest&#39;)
 population density. The infected $I$ is for now just zeros. But let’s put a
 patient zero somewhere in Stockholm.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;S_0 = img[:,:,1]
-I_0 = np.zeros_like(S_0)
-I_0[309,170] = 1 # patient zero
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;S_0&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[:,:,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;I_0&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zeros_like&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;S_0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;I_0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;309&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;170&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;c&quot;&gt;# patient zero&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Nobodys dead, yet. So lets put $R$ to zeroes too.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;R_0 = np.zeros_like(S_0)
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;R_0&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;zeros_like&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;S_0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Now set some initial values of how long the simulation is to be run and so on.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;T = 900                         # final time
-dt = 1                          # time increment
-N = int(T/dt) + 1               # number of time-steps
-t = np.linspace(0.0, T, N)      # time discretization
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;900&lt;/span&gt;                         &lt;span class=&quot;c&quot;&gt;# final time&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;dt&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;                          &lt;span class=&quot;c&quot;&gt;# time increment&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;N&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;               &lt;span class=&quot;c&quot;&gt;# number of time-steps&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;linspace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;T&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;N&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;      &lt;span class=&quot;c&quot;&gt;# time discretization&lt;/span&gt;
 
-# initialize the array containing the solution for each time-step
-u = np.empty((N, 3, S_0.shape[0], S_0.shape[1]))
-u[0][0] = S_0
-u[0][1] = I_0
-u[0][2] = R_0
+&lt;span class=&quot;c&quot;&gt;# initialize the array containing the solution for each time-step&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;empty&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;((&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;N&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;S_0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;S_0&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;shape&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]))&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;S_0&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;I_0&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;R_0&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;We need to make a custom colormap so that the infected matrix can be overlayed
 on the map.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import matplotlib.cm as cm
-theCM = cm.get_cmap(&quot;Reds&quot;)
-theCM._init()
-alphas = np.abs(np.linspace(0, 1, theCM.N))
-theCM._lut[:-3,-1] = alphas
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;matplotlib.cm&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;cm&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;theCM&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cm&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_cmap&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;Reds&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;theCM&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_init&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;alphas&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;abs&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;np&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;linspace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;theCM&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;N&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;theCM&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;_lut&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[:&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;alphas&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;And we sit back and enjoy…&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;for n in range(N-1):
-    u[n+1] = euler_step(u[n], f, dt)
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;n&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;N&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;euler_step&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;dt&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;Not let’s render some images and make a gif of it. Everybody loves gifs!&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from images2gif import writeGif
+&lt;div class=&quot;language-python highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;images2gif&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;writeGif&lt;/span&gt;
 
-keyFrames = []
-frames = 60.0
+&lt;span class=&quot;n&quot;&gt;keyFrames&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;frames&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;60.0&lt;/span&gt;
 
-for i in range(0, N-1, int(N/frames)):
-    imgplot = plt.imshow(img, vmin=0, vmax=255)
-    imgplot.set_interpolation(&quot;nearest&quot;)
-    imgplot = plt.imshow(u[i][1], vmin=0, cmap=theCM)
-    imgplot.set_interpolation(&quot;nearest&quot;)
-    filename = &quot;outbreak&quot; + str(i) + &quot;.png&quot;
-    plt.savefig(filename)
-    keyFrames.append(filename)
+&lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;range&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;N&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;int&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;N&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;frames&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)):&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;imgplot&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;imshow&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;img&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vmin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vmax&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;255&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;imgplot&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;set_interpolation&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;nearest&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;imgplot&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;imshow&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;][&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;],&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;vmin&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;cmap&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;theCM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;imgplot&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;set_interpolation&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;nearest&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;filename&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;outbreak&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;str&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;.png&quot;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;savefig&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;keyFrames&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;filename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
   
-images = [Image.open(fn) for fn in keyFrames]
-gifFilename = &quot;outbreak.gif&quot;
-writeGif(gifFilename, images, duration=0.3)
-plt.clf()
+&lt;span class=&quot;n&quot;&gt;images&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Image&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fn&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;fn&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;keyFrames&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;gifFilename&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&quot;outbreak.gif&quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;writeGif&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;gifFilename&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;images&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;duration&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;0.3&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;plt&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;clf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/outbreak.gif&quot; alt=&quot;alt text&quot; title=&quot;Title&quot; /&gt;&lt;/p&gt;
 
@@ -793,70 +1036,6 @@ post.&lt;/p&gt;
         <guid isPermaLink="true">http://maxberggren.se/2014/11/27/model-of-a-zombie-outbreak/</guid>
         
         <category>numerics</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>AppleScript running Ipython Notebooks trough double click</title>
-        <description>&lt;p&gt;Here’s some AppleScript magic to have &lt;code&gt;.ipnb&lt;/code&gt;-files runnable with a double click, like they should.&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;Fire up &lt;code&gt;AppleScript Editor&lt;/code&gt; (found in &lt;code&gt;/Applications/Utilities/&lt;/code&gt;) and paste the following code:&lt;/p&gt;
-
-    &lt;pre&gt;&lt;code&gt; on run
- 	set startPath to &quot;&quot; --change to your prefered path, mine was /Users/max/Dropbox/Dokument/Python
- 	tell application &quot;Terminal&quot;
- 		activate
- 		do script with command &quot;cd &quot; &amp;amp; startPath &amp;amp; &quot; &amp;amp;&amp;amp; ipython notebook&quot;
- 	end tell
- end run
-
- on open the_files
- 	repeat with i from 1 to the count of the_files
- 		tell application &quot;Finder&quot;
- 			set p to POSIX path of (item i of the_files)
- 		end tell
- 		tell application &quot;Terminal&quot;
- 			activate
- 			do script with command &quot;ipython notebook &quot; &amp;amp; p
- 		end tell
- 	end repeat
- end open
-&lt;/code&gt;&lt;/pre&gt;
-  &lt;/li&gt;
-  &lt;li&gt;Save as a &lt;code&gt;program&lt;/code&gt; preferably in your &lt;code&gt;/Applications/&lt;/code&gt; folder.&lt;/li&gt;
-  &lt;li&gt;Press &lt;code&gt;Cmd+i&lt;/code&gt; on any &lt;code&gt;.ipnb&lt;/code&gt;-file. &lt;/li&gt;
-  &lt;li&gt;Under &lt;code&gt;Open with&lt;/code&gt; select your created program.&lt;/li&gt;
-  &lt;li&gt;Press &lt;code&gt;Change all...&lt;/code&gt;&lt;/li&gt;
-  &lt;li&gt;Profit!?!?&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable &lt;code&gt;setPath&lt;/code&gt; to something like &lt;code&gt;/Users/max/Dropbox/Dokument/Python&lt;/code&gt; so you’re at your prefered path right from the start.&lt;/p&gt;
-
-&lt;p&gt;And while we’re at it, here’s some code for a drag and drop AppleScript converting &lt;code&gt;.ipnb&lt;/code&gt; to markdown &lt;code&gt;.md&lt;/code&gt;:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;on open the_files
-   repeat with i from 1 to the count of the_files
-   	tell application &quot;Finder&quot;
-   		set filePath to POSIX path of (item i of the_files)
-   	end tell
-   	tell application &quot;Terminal&quot;
-   		activate
-   		set parentFolder to POSIX path of ((the_files as text) &amp;amp; &quot;::&quot;)
-   		do script with command &quot;cd &quot; &amp;amp; parentFolder &amp;amp; &quot; &amp;amp;&amp;amp; ipython nbconvert --to markdown &quot; &amp;amp; filePath
-   	end tell
-	end repeat
-end open
-&lt;/code&gt;&lt;/pre&gt;
-
-</description>
-        <pubDate>Mon, 24 Nov 2014 21:29:50 +0100</pubDate>
-        <link>http://maxberggren.se/2014/11/24/applescript-ipnb/</link>
-        <guid isPermaLink="true">http://maxberggren.se/2014/11/24/applescript-ipnb/</guid>
-        
-        <category>applescript</category>
         
         
       </item>
