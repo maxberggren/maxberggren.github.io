@@ -152,6 +152,22 @@ pre {
 div.MathJax_Display {
   margin-bottom: 25px; }
 
+table, th, td {
+  border: 1px solid #eee; }
+
+table {
+  margin: 30px 0;
+  border-collapse: collapse;
+  width: 100%;
+  font-family: monospace; }
+
+th, td {
+  text-align: left;
+  padding: 8px; }
+
+tr:nth-child(even) {
+  background-color: #f2f2f2; }
+
 /**
  * Site header
  */
