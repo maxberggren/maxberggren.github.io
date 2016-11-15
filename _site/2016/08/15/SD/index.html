@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width initial-scale=1">
+
+  <title>Investigation of voting patterns demographic correlations in Sweden</title>
+  <meta name="description" content="Sweden have a long tradition of keeping statistics of different KPI:s by municipality through many institutions. Let’s see what KPI:s correlate with differen...">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://localhost:4000/2016/08/15/SD/">
+  <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://localhost:4000/feed.xml" />
+  
+  <!-- Font -->
+  <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+
+  <!-- Mathjax -->
+  <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+          displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+          processEscapes: true,
+          processEnvironments: true
+    }
+  });
+  MathJax.Hub.Configured();
+  </script>
+
+  <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/monokai_sublime.min.css">
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-698202-1', 'auto');
+    ga('send', 'pageview');
+
+  </script>
+
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">MAX BERGGREN</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Investigation of voting patterns demographic correlations in Sweden</h1>
+    <p class="post-meta">Aug 15, 2016</p>
+  </header>
+
+  <article class="post-content">
+    <p>Sweden have a long tradition of keeping statistics of different KPI:s by municipality through many institutions. Let’s see what KPI:s correlate with different voting patterns. And while we’re at it, demonstrate some Pandas method chaining – and do a Bayesian analysis of the Pearson product-moment correlation coefficient often denoted as Persons <code class="highlighter-rouge">r</code>.</p>
+
+<p>Note that the conclusions might mainly be of intrest of Swedes, and there will probably slip in some Swedish. Quick wordlist: <code class="highlighter-rouge">kommun = municipality, brott = crime, gravid = pregnant</code>.</p>
+
+<p><strong>TLDR;</strong> Sweden Democrats (SD) shows high correlation with mothers <strong>smoking while pregnant</strong>, unemployment and <strong>motorcycles</strong>. <strong>The results are a the bottom of the post if you’re not interested in the process</strong>.</p>
+
+<p>And as usual, the Jupyter Notebook (former Ipython notebook) is <a href="https://github.com/maxberggren/voting-correlation">here</a> in a repo together with the data.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
+<span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">rcParams</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s">'font.family'</span><span class="p">]</span> <span class="o">=</span> <span class="s">'monospace'</span>
+<span class="n">rcParams</span><span class="p">[</span><span class="s">'font.sans-serif'</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s">'Courier'</span><span class="p">]</span>
+</code></pre>
+</div>
+
+<p>Starting with the data from the Swedish election 2014, we can read it directly from an url with the very nice Pandas method <code class="highlighter-rouge">read_html</code>.</p>
+
+<p>Encapsulating the DataFrame <code class="highlighter-rouge">votes</code> with parentheseses makes method chaining possible. Every method in fact returns a DataFrame which makes every preprocessing step just another step in the chain.</p>
+
+<h3 id="percent-votes-in-swedish-election-2014">Percent votes in Swedish election 2014</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">votes</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="s">'http://www.val.se/val/val2014/slutresultat/K/rike/index.html'</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+           <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">u'Område'</span><span class="p">:</span> <span class="s">'Kommun'</span><span class="p">})</span>
+           <span class="p">[[</span><span class="s">'Kommun'</span><span class="p">,</span> <span class="s">'SD'</span><span class="p">,</span> <span class="s">'M'</span><span class="p">,</span> <span class="s">'C'</span><span class="p">,</span> <span class="s">'FP'</span><span class="p">,</span> <span class="s">'KD'</span><span class="p">,</span> <span class="s">'S'</span><span class="p">,</span> <span class="s">'V'</span><span class="p">,</span> <span class="s">'MP'</span><span class="p">,</span> <span class="s">'FI'</span><span class="p">,</span> <span class="s">u'ÖVR'</span><span class="p">,</span> <span class="s">'BLANK'</span><span class="p">]]</span>
+           <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+           <span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">","</span><span class="p">,</span> <span class="s">"."</span><span class="p">)</span>
+                             <span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">"</span><span class="si">%</span><span class="s">"</span><span class="p">,</span> <span class="s">""</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span>
+<span class="p">)</span>
+<span class="n">partier</span> <span class="o">=</span> <span class="n">votes</span><span class="o">.</span><span class="n">columns</span>
+<span class="n">votes</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>SD</th>
+      <th>M</th>
+      <th>C</th>
+      <th>FP</th>
+      <th>KD</th>
+      <th>S</th>
+      <th>V</th>
+      <th>MP</th>
+      <th>FI</th>
+      <th>ÖVR</th>
+      <th>BLANK</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>10.64</td>
+      <td>21.08</td>
+      <td>4.95</td>
+      <td>3.28</td>
+      <td>3.50</td>
+      <td>33.59</td>
+      <td>6.25</td>
+      <td>5.70</td>
+      <td>0.18</td>
+      <td>10.83</td>
+      <td>1.39</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>7.48</td>
+      <td>21.58</td>
+      <td>6.17</td>
+      <td>10.30</td>
+      <td>6.44</td>
+      <td>29.19</td>
+      <td>6.85</td>
+      <td>10.81</td>
+      <td>0.30</td>
+      <td>0.89</td>
+      <td>1.21</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>14.44</td>
+      <td>19.70</td>
+      <td>14.89</td>
+      <td>1.74</td>
+      <td>3.12</td>
+      <td>28.77</td>
+      <td>4.08</td>
+      <td>3.49</td>
+      <td>0.20</td>
+      <td>9.56</td>
+      <td>1.98</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Now let’s read some migration patterns straight of the web. I.e. what municipalitys that had a positive net growth in terms of people living there.</p>
+
+<h3 id="net-inhabitant-growth">Net inhabitant growth</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17248'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Befolkningsökning, 2012-2015, procent, treårsbasis'</span>
+<span class="n">befolkningsokning</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">u","</span><span class="p">,</span> <span class="s">u"."</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">befolkningsokning</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Befolkningsökning, 2012-2015, procent, treårsbasis</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>3.7</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>3.3</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>2.9</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="rating-of-how-good-a-municipality-is-for-companies">Rating of how good a municipality is for companies</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17257'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Företagsklimat, ranking 1-290, 2015, ordningstal'</span>
+<span class="n">foretagsklimat</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">foretagsklimat</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Företagsklimat, ranking 1-290, 2015, ordningstal</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>43</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>185</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>221</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="percent-people-with-a-higher-education">Percent people with a higher education</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17251'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Andel högskoleutbildade, 2015, procent'</span>
+<span class="n">hogskoleutbildning</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">u","</span><span class="p">,</span> <span class="s">u"."</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">hogskoleutbildning</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Andel högskoleutbildade, 2015, procent</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>18.9</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>24.3</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>15.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="percent-early-retirees">Percent early retirees</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17256'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Andel förtidspensionärer, 2015, procent'</span>
+<span class="n">fortidspensionarer</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">u","</span><span class="p">,</span> <span class="s">u"."</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">fortidspensionarer</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Andel förtidspensionärer, 2015, procent</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>5.5</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>6.5</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>6.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="median-income">Median income</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17249'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Medianinkomst, 2014, kronor'</span>
+<span class="n">medianinkomst</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">u"</span><span class="se">\xa0</span><span class="s">"</span><span class="p">,</span> <span class="s">u""</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">medianinkomst</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Medianinkomst, 2014, kronor</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>273684</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>259211</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>241077</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="unemployment-rate">Unemployment rate</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17255'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Öppen arbetslöshet (Arbetsförmedlingen), 2015, procent'</span>
+<span class="n">arbetsloshet</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">u","</span><span class="p">,</span> <span class="s">u"."</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">arbetsloshet</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Öppen arbetslöshet (Arbetsförmedlingen), 2015, procent</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>4.9</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>5.5</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>9.3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="number-of-crimes-per-100k-inhabitants">Number of crimes per 100k inhabitants</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">brott</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">"brott_per_1000.txt"</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s">";"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">"latin-1"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">"Region"</span><span class="p">:</span> <span class="s">"Kommun"</span><span class="p">,</span> <span class="s">"/100 000 inv"</span><span class="p">:</span> <span class="s">"Brott per 100k inv"</span><span class="p">})</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">"Kommun"</span><span class="p">)</span>
+        <span class="o">.</span><span class="nb">sum</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">[[</span><span class="s">'Kommun'</span><span class="p">,</span> <span class="s">'Brott per 100k inv'</span><span class="p">]]</span>
+        <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">" kommun"</span><span class="p">,</span> <span class="s">""</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">))</span>
+<span class="n">brott</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Brott per 100k inv</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>8231</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>10511</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>8300</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="violent-crimes">Violent crimes</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">valdsbrott</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">"vbrott_per_1000.txt"</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s">";"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">"latin-1"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">"Region"</span><span class="p">:</span> <span class="s">"Kommun"</span><span class="p">,</span> <span class="s">"/100 000 inv"</span><span class="p">:</span> <span class="s">u"Våldsbrott per 100k inv"</span><span class="p">})</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">"Kommun"</span><span class="p">)</span>
+        <span class="o">.</span><span class="nb">sum</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">[[</span><span class="s">'Kommun'</span><span class="p">,</span> <span class="s">u'Våldsbrott per 100k inv'</span><span class="p">]]</span>
+        <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">" kommun"</span><span class="p">,</span> <span class="s">""</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">))</span>
+<span class="n">valdsbrott</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Våldsbrott per 100k inv</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>823</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>870</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>967</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="drug-crimes">Drug crimes</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">knarkbrott</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">"knarkbrott_per_1000.txt"</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s">";"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">"latin-1"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">"Region"</span><span class="p">:</span> <span class="s">"Kommun"</span><span class="p">,</span> <span class="s">"/100 000 inv"</span><span class="p">:</span> <span class="s">u"Narkotikabrott per 100k inv"</span><span class="p">})</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">"Kommun"</span><span class="p">)</span>
+        <span class="o">.</span><span class="nb">sum</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="p">[[</span><span class="s">'Kommun'</span><span class="p">,</span> <span class="s">u'Narkotikabrott per 100k inv'</span><span class="p">]]</span>
+        <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">" kommun"</span><span class="p">,</span> <span class="s">""</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">))</span>
+<span class="n">knarkbrott</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Narkotikabrott per 100k inv</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>402</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>1487</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>327</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="mean-age">Mean age</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">url</span> <span class="o">=</span> <span class="s">'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17247'</span>
+<span class="n">col</span> <span class="o">=</span> <span class="s">u'Medelålder, 2015, år'</span>
+<span class="n">medianalder</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">thousands</span><span class="o">=</span><span class="s">' '</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">u","</span><span class="p">,</span> <span class="s">u"."</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">medianalder</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Medelålder, 2015, år</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>39.9</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>42.0</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>42.1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="percent-born-in-another-country-than-sweden">Percent born in another country than Sweden</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">utrikesfodda</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s">"BE0101-Utrikes-fodda-kom-fland.xlsx"</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s">u'Kommun'</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">procent</span><span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">u'I procent'</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">'procent'</span><span class="p">:</span> <span class="s">u'Procent utrikesfödda'</span><span class="p">})</span>
+        <span class="p">[[</span><span class="s">'Kommun'</span><span class="p">,</span> <span class="s">u'Procent utrikesfödda'</span><span class="p">]]</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">utrikesfodda</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Procent utrikesfödda</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Botkyrka</th>
+      <td>40.1</td>
+    </tr>
+    <tr>
+      <th>Danderyd</th>
+      <td>15.3</td>
+    </tr>
+    <tr>
+      <th>Ekerö</th>
+      <td>11.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="percent-mothers-smoking-while-pregnant">Percent mothers smoking while pregnant</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">rokande_grav</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s">"Lev03.xlsx"</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">'index'</span><span class="p">:</span> <span class="s">'Kommun'</span><span class="p">,</span> <span class="s">'2014'</span><span class="p">:</span> <span class="s">u'Rökande gravida, procent'</span><span class="p">})</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">" "</span><span class="p">))</span>
+      <span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">".."</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s">u'Rökande gravida, procent'</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">u'Rökande gravida, procent'</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+<span class="p">)</span>
+<span class="n">rokande_grav</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Rökande gravida, procent</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Upplands Väsby</th>
+      <td>3.6</td>
+    </tr>
+    <tr>
+      <th>Vallentuna</th>
+      <td>2.3</td>
+    </tr>
+    <tr>
+      <th>Österåker</th>
+      <td>2.9</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="rapes-per-10k-inhabitants">Rapes per 10k inhabitants</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">valdtakter</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s">"Sex03.xlsx"</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">'index'</span><span class="p">:</span> <span class="s">'Kommun'</span><span class="p">,</span> <span class="s">'2015'</span><span class="p">:</span> <span class="s">u'Våldtäkter per 10k inv'</span><span class="p">})</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Kommun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">'Kommun'</span><span class="p">]</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">" "</span><span class="p">))</span>
+      <span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+      <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+      <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s">u'Våldtäkter per 10k inv'</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">u'Våldtäkter per 10k inv'</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+<span class="p">)</span>
+<span class="n">valdtakter</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Våldtäkter per 10k inv</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Upplands Väsby</th>
+      <td>5.0</td>
+    </tr>
+    <tr>
+      <th>Vallentuna</th>
+      <td>1.9</td>
+    </tr>
+    <tr>
+      <th>Österåker</th>
+      <td>2.2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="asylum-seekers-per-1k-inhabitants">Asylum seekers per 1k inhabitants</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">asylsokande</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s">"asylsdochm.xlsx"</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s">u'Kommun'</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s">u'Antal asylsökande per'</span><span class="p">:</span> <span class="s">u'Antal asylsökande per 1000 invånare'</span><span class="p">})</span>
+        <span class="p">[[</span><span class="s">'Kommun'</span><span class="p">,</span> <span class="s">u'Antal asylsökande per 1000 invånare'</span><span class="p">]]</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s">u'Antal asylsökande per 1000 invånare'</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">u'Antal asylsökande per 1000 invånare'</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)})</span>
+
+<span class="p">)</span>
+<span class="n">asylsokande</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Antal asylsökande per 1000 invånare</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ljusnarsberg</th>
+      <td>138.26</td>
+    </tr>
+    <tr>
+      <th>Norberg</th>
+      <td>113.94</td>
+    </tr>
+    <tr>
+      <th>Hultsfred</th>
+      <td>78.33</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="types-of-vehicles">Types of vehicles</h3>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">fordon</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="s">"Fordon_lan_och_kommuner_2015.xlsx"</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">sheetname</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s">u'Kommun'</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s">'Kommun'</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s">'Kommun-'</span><span class="p">,</span> <span class="s">'Unnamed: 4'</span><span class="p">,</span> <span class="s">'Unnamed: 5'</span><span class="p">,</span> <span class="s">'Unnamed: 6'</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span>
+        <span class="o">.</span><span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c"># Convert to percentages</span>
+        <span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="s">", 2015, procent"</span><span class="p">)</span>
+
+<span class="p">)</span>
+<span class="n">fordon</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Personbilar, 2015, procent</th>
+      <th>Lastbilar, 2015, procent</th>
+      <th>Bussar, 2015, procent</th>
+      <th>Motorcyklar, 2015, procent</th>
+      <th>Mopeder, 2015, procent</th>
+      <th>Traktorer, 2015, procent</th>
+      <th>Snöskotrar, 2015, procent</th>
+      <th>Terränghjulingar, 2015, procent</th>
+      <th>Terrängskotrar1), 2015, procent</th>
+      <th>Släpvagnar, 2015, procent</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Upplands Väsby</th>
+      <td>0.757944</td>
+      <td>0.069553</td>
+      <td>0.000088</td>
+      <td>0.042546</td>
+      <td>0.009148</td>
+      <td>0.007748</td>
+      <td>0.006128</td>
+      <td>0.005077</td>
+      <td>0.000175</td>
+      <td>0.101593</td>
+    </tr>
+    <tr>
+      <th>Vallentuna</th>
+      <td>0.672324</td>
+      <td>0.066290</td>
+      <td>0.000000</td>
+      <td>0.051673</td>
+      <td>0.009153</td>
+      <td>0.029813</td>
+      <td>0.008131</td>
+      <td>0.021327</td>
+      <td>0.000489</td>
+      <td>0.140801</td>
+    </tr>
+    <tr>
+      <th>Österåker</th>
+      <td>0.692083</td>
+      <td>0.069446</td>
+      <td>0.000252</td>
+      <td>0.047521</td>
+      <td>0.013716</td>
+      <td>0.015516</td>
+      <td>0.009396</td>
+      <td>0.010332</td>
+      <td>0.000252</td>
+      <td>0.141484</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Since we now have every KPI as a DataFrame, let’s put them together with <code class="highlighter-rouge">concat</code>.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">concat</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span>
+        <span class="n">votes</span><span class="p">,</span>
+        <span class="n">utrikesfodda</span><span class="p">,</span>
+        <span class="n">medianalder</span><span class="p">,</span> 
+        <span class="n">brott</span><span class="p">,</span> 
+        <span class="n">medianinkomst</span><span class="p">,</span> 
+        <span class="n">arbetsloshet</span><span class="p">,</span> 
+        <span class="n">fortidspensionarer</span><span class="p">,</span> 
+        <span class="n">hogskoleutbildning</span><span class="p">,</span> 
+        <span class="n">befolkningsokning</span><span class="p">,</span>
+        <span class="n">foretagsklimat</span><span class="p">,</span> 
+        <span class="n">valdsbrott</span><span class="p">,</span>
+        <span class="n">knarkbrott</span><span class="p">,</span>
+        <span class="n">asylsokande</span><span class="p">,</span>
+        <span class="n">fordon</span><span class="p">,</span>
+        <span class="n">valdtakter</span><span class="p">,</span>
+        <span class="n">rokande_grav</span><span class="p">,</span>
+    <span class="p">],</span> 
+    <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">join</span><span class="o">=</span><span class="s">'inner'</span><span class="p">)</span>
+<span class="n">concat</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>SD</th>
+      <th>M</th>
+      <th>C</th>
+      <th>FP</th>
+      <th>KD</th>
+      <th>S</th>
+      <th>V</th>
+      <th>MP</th>
+      <th>FI</th>
+      <th>ÖVR</th>
+      <th>...</th>
+      <th>Bussar, 2015, procent</th>
+      <th>Motorcyklar, 2015, procent</th>
+      <th>Mopeder, 2015, procent</th>
+      <th>Traktorer, 2015, procent</th>
+      <th>Snöskotrar, 2015, procent</th>
+      <th>Terränghjulingar, 2015, procent</th>
+      <th>Terrängskotrar1), 2015, procent</th>
+      <th>Släpvagnar, 2015, procent</th>
+      <th>Våldtäkter per 10k inv</th>
+      <th>Rökande gravida, procent</th>
+    </tr>
+    <tr>
+      <th>Kommun</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>Ale</th>
+      <td>10.64</td>
+      <td>21.08</td>
+      <td>4.95</td>
+      <td>3.28</td>
+      <td>3.50</td>
+      <td>33.59</td>
+      <td>6.25</td>
+      <td>5.70</td>
+      <td>0.18</td>
+      <td>10.83</td>
+      <td>...</td>
+      <td>0.000141</td>
+      <td>0.054257</td>
+      <td>0.016427</td>
+      <td>0.039285</td>
+      <td>0.002159</td>
+      <td>0.009058</td>
+      <td>0.000188</td>
+      <td>0.150005</td>
+      <td>2.1</td>
+      <td>4.4</td>
+    </tr>
+    <tr>
+      <th>Alingsås</th>
+      <td>7.48</td>
+      <td>21.58</td>
+      <td>6.17</td>
+      <td>10.30</td>
+      <td>6.44</td>
+      <td>29.19</td>
+      <td>6.85</td>
+      <td>10.81</td>
+      <td>0.30</td>
+      <td>0.89</td>
+      <td>...</td>
+      <td>0.000068</td>
+      <td>0.052143</td>
+      <td>0.009086</td>
+      <td>0.053940</td>
+      <td>0.001729</td>
+      <td>0.014883</td>
+      <td>0.000203</td>
+      <td>0.154902</td>
+      <td>4.8</td>
+      <td>3.8</td>
+    </tr>
+    <tr>
+      <th>Alvesta</th>
+      <td>14.44</td>
+      <td>19.70</td>
+      <td>14.89</td>
+      <td>1.74</td>
+      <td>3.12</td>
+      <td>28.77</td>
+      <td>4.08</td>
+      <td>3.49</td>
+      <td>0.20</td>
+      <td>9.56</td>
+      <td>...</td>
+      <td>0.002950</td>
+      <td>0.042747</td>
+      <td>0.014082</td>
+      <td>0.082378</td>
+      <td>0.000946</td>
+      <td>0.015418</td>
+      <td>0.000000</td>
+      <td>0.182122</td>
+      <td>2.0</td>
+      <td>4.8</td>
+    </tr>
+    <tr>
+      <th>Aneby</th>
+      <td>9.38</td>
+      <td>11.19</td>
+      <td>20.46</td>
+      <td>4.06</td>
+      <td>14.82</td>
+      <td>31.30</td>
+      <td>2.19</td>
+      <td>5.75</td>
+      <td>0.05</td>
+      <td>0.80</td>
+      <td>...</td>
+      <td>0.003179</td>
+      <td>0.042438</td>
+      <td>0.011197</td>
+      <td>0.119712</td>
+      <td>0.000968</td>
+      <td>0.017556</td>
+      <td>0.000000</td>
+      <td>0.199198</td>
+      <td>1.5</td>
+      <td>0.0</td>
+    </tr>
+    <tr>
+      <th>Arboga</th>
+      <td>9.75</td>
+      <td>20.54</td>
+      <td>5.53</td>
+      <td>7.57</td>
+      <td>4.08</td>
+      <td>39.04</td>
+      <td>5.77</td>
+      <td>5.62</td>
+      <td>0.14</td>
+      <td>1.96</td>
+      <td>...</td>
+      <td>0.001810</td>
+      <td>0.043954</td>
+      <td>0.010256</td>
+      <td>0.060502</td>
+      <td>0.006722</td>
+      <td>0.009997</td>
+      <td>0.000172</td>
+      <td>0.170818</td>
+      <td>2.2</td>
+      <td>13.2</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 35 columns</p>
+</div>
+
+<p>Pandas gives us the method <code class="highlighter-rouge">corr</code> that by default uses Persons <code class="highlighter-rouge">r</code> to show correlations between columns. Let’s start of by using this simple frequentistic approach.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">corr_matrix</span> <span class="o">=</span> <span class="n">concat</span><span class="o">.</span><span class="n">corr</span><span class="p">()</span>
+<span class="n">corr</span> <span class="o">=</span> <span class="n">concat</span><span class="o">.</span><span class="n">corr</span><span class="p">()</span>
+
+<span class="c"># Keep only parties as columns</span>
+<span class="n">corr</span> <span class="o">=</span> <span class="n">corr</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">corr</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">partier</span><span class="p">)]</span> 
+<span class="c"># Keep only KPIs as rows</span>
+<span class="n">corr</span> <span class="o">=</span> <span class="n">corr</span><span class="p">[</span><span class="o">~</span><span class="n">corr</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">partier</span><span class="p">)]</span>
+</code></pre>
+</div>
+
+<p>And use Seaborn:s <code class="highlighter-rouge">heatmap</code> to give us a nice visual representation of the correlation table.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">fig1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span>
+    <span class="n">corr</span><span class="p">,</span> 
+    <span class="n">annot</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s">'.1f'</span><span class="p">,</span> <span class="n">linewidths</span><span class="o">=.</span><span class="mi">5</span>
+<span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.141</span><span class="p">,</span> 
+        <span class="s">u'Korrelation med andel riksdagsröster'</span><span class="p">,</span>
+        <span class="n">verticalalignment</span><span class="o">=</span><span class="s">'bottom'</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s">'left'</span><span class="p">,</span>
+        <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s">'#000000'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.181</span><span class="p">,</span> 
+        <span class="s">u'Källa: BRÅ/SCB/Val.se/Ekonomifakta.se – Korrelationen är på kommunnivå och Pearson-korr har använts'</span><span class="p">,</span>
+        <span class="n">verticalalignment</span><span class="o">=</span><span class="s">'bottom'</span><span class="p">,</span> <span class="n">horizontalalignment</span><span class="o">=</span><span class="s">'left'</span><span class="p">,</span>
+        <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s">'#666666'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s">'SD_korr.pdf'</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s">'tight'</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p><img src="/assets/SD-korr_41_0.png" style="max-width: 300%!important;" /></p>
+
+<p>First of, a Persons <code class="highlighter-rouge">r</code> correlation ranges from 0 to 1. Zero meaning no correlation and one full correlation. Depending on textbook, somewhere over 0.4 will be a correlation to take seriously. But let’s get back to that in a moment.</p>
+
+<p>Some interesting correlations are though:</p>
+
+<ul>
+  <li>The right-wing populist party the Sweden Democrats (SD in the figure)
+    <ul>
+      <li>Correlations with municipailtys having large porportions <strong>motorcycles</strong>,</li>
+      <li>and women <strong>smoking while pregnant</strong>.</li>
+      <li>Also high unemployment rate shows some correlation.</li>
+    </ul>
+  </li>
+  <li>Right wing Moderaterna (M)
+    <ul>
+      <li>High percentage mopeds</li>
+      <li>High percentage cars</li>
+      <li>High education</li>
+      <li>High income</li>
+    </ul>
+  </li>
+  <li>The Greens Miljöpartiet (MP)
+    <ul>
+      <li>Pretty much the same as Moderaterna. Only not that high income.</li>
+    </ul>
+  </li>
+  <li>Centerpartiet (C) historically a party for the farmers
+    <ul>
+      <li>High correlation with tractors</li>
+    </ul>
+  </li>
+</ul>
+
+<p>So let’s go into detail what a correlation of 0.5 actually is. Is it a fully linear correlation between smoking while pregnant and votage on xenophobic parties? Let’s plot the municipalitys with these KPI:s on the axis.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">def</span> <span class="nf">corrplot_SD</span><span class="p">(</span><span class="n">kpi</span><span class="p">):</span>
+    <span class="p">(</span><span class="n">concat</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+           <span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s">'scatter'</span><span class="p">,</span> 
+                 <span class="n">x</span><span class="o">=</span><span class="n">kpi</span><span class="p">,</span> 
+                 <span class="n">y</span><span class="o">=</span><span class="s">u'SD'</span><span class="p">))</span>
+
+<span class="n">corrplot_SD</span><span class="p">(</span><span class="s">u'Rökande gravida, procent'</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p><img src="/assets/SD-korr_44_0.png" alt="png" /></p>
+
+<p>If you ask me, that looks like a correlation. But that’s also what I want to see since the Sweden Democrats is pretty much as far away from my personal political opinions you can go. I’d pretty much take any chance to misscredit them. So let’s go further down the rabbit hole, but first plot the other KPIs.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">corrplot_SD</span><span class="p">(</span><span class="s">u'Motorcyklar, 2015, procent'</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p><img src="/assets/SD-korr_46_0.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">corrplot_SD</span><span class="p">(</span><span class="s">u'Öppen arbetslöshet (Arbetsförmedlingen), 2015, procent'</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p><img src="/assets/SD-korr_47_0.png" alt="png" /></p>
+
+<p>We are now going to calculate the <code class="highlighter-rouge">r</code> coefficient in a Bayesian fashion with Monte Carlo Markov Chains (MCMC). That will give us a distribution over <code class="highlighter-rouge">r</code> instead of a single number which allows us to give a upper and lower bound of the correlation. This closely follows the method described by <a href="http://www.philippsinger.info/?p=581">Philipp Singer here</a>.</p>
+
+<p>You should read his blog post if you want more details. And in more general, Monte Carlo simulations is a really appealing way to solve problems. Whenever I get the chance, I recommend <a href="https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers">Bayesian methods for hackers</a>. The topics covered there should really be in any data scientist tool belt.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">pymc</span> <span class="kn">as</span> <span class="nn">pymc</span>
+<span class="kn">from</span> <span class="nn">pymc</span> <span class="kn">import</span> <span class="n">Normal</span><span class="p">,</span> <span class="n">Uniform</span><span class="p">,</span> <span class="n">MvNormal</span><span class="p">,</span> <span class="n">Exponential</span>
+<span class="kn">from</span> <span class="nn">numpy.linalg</span> <span class="kn">import</span> <span class="n">inv</span><span class="p">,</span> <span class="n">det</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">log</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">dot</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">gammaln</span>
+
+<span class="k">def</span> <span class="nf">_model</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="s">'mu'</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.000001</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">Uniform</span><span class="p">(</span><span class="s">'sigma'</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">rho</span> <span class="o">=</span> <span class="n">Uniform</span><span class="p">(</span><span class="s">'r'</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="nd">@pymc.deterministic</span>
+    <span class="k">def</span> <span class="nf">precision</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">):</span>
+        <span class="n">ss1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">ss2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">rss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">rho</span> <span class="o">*</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">sigma</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">inv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mat</span><span class="p">([[</span><span class="n">ss1</span><span class="p">,</span> <span class="n">rss</span><span class="p">],</span> 
+                           <span class="p">[</span><span class="n">rss</span><span class="p">,</span> <span class="n">ss2</span><span class="p">]]))</span>
+    
+    <span class="n">mult_n</span> <span class="o">=</span> <span class="n">MvNormal</span><span class="p">(</span><span class="s">'mult_n'</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="n">mu</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="n">precision</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="nb">locals</span><span class="p">()</span>
+    
+<span class="k">def</span> <span class="nf">analyze</span><span class="p">(</span><span class="n">kpi</span><span class="p">):</span>
+    <span class="n">freq_corr</span> <span class="o">=</span> <span class="n">corr</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">kpi</span><span class="p">,</span> <span class="s">'SD'</span><span class="p">]</span>
+    <span class="k">print</span> <span class="s">"Standard Persons r correlations gave {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">freq_corr</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">concat</span><span class="p">[</span><span class="s">'SD'</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">concat</span><span class="p">[</span><span class="n">kpi</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">])</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">pymc</span><span class="o">.</span><span class="n">MCMC</span><span class="p">(</span><span class="n">_model</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> 
+    <span class="n">model</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">10000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span> 
+    
+    <span class="k">print</span> <span class="s">"</span><span class="se">\n</span><span class="s">MCMC gives an lower and upper bound for this of {} and {}"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="o">*</span><span class="n">model</span><span class="o">.</span><span class="n">stats</span><span class="p">()[</span><span class="s">'r'</span><span class="p">][</span><span class="s">'95</span><span class="si">% </span><span class="s">HPD interval'</span><span class="p">]</span>
+    <span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">analyze</span><span class="p">(</span><span class="s">u'Rökande gravida, procent'</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Standard Persons r correlations gave 0.483367702644
+ [-----------------100%-----------------] 10000 of 10000 complete in 25.1 sec
+MCMC gives an lower and upper bound for this of 0.384673816867 and 0.569554905111
+</code></pre>
+</div>
+
+<p>This tells us that the correlation is statistically sound. No <code class="highlighter-rouge">p</code>-values, just a interval that the true <code class="highlighter-rouge">r</code> should be in with 95 % probability. Even if it’s <em>just</em> the lower bound 0.38 it’s a correlation worth mentioning. But of course, it does not tell us if <strong>correlation imply causation</strong>.</p>
+
+
+  </article>
+
+  
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+      /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+      var disqus_shortname = 'maxberggren'; // required: replace example with your forum shortname
+
+      /* * * DON'T EDIT BELOW THIS LINE * * */
+      (function() {
+          var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  
+</div>
+
+      </div>
+    </div>
+
+    <!--
+<footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">MAX BERGGREN</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col  footer-col-1">
+        <ul class="contact-list">
+          <li>MAX BERGGREN</li>
+          <li><a href="mailto:maxberggren@gmail.com">maxberggren@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/maxberggren">
+              <span class="icon  icon--github">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/>
+                </svg>
+              </span>
+
+              <span class="username">maxberggren</span>
+            </a>
+          </li>
+          
+
+          
+          <li>
+            <a href="https://twitter.com/maxberggren">
+              <span class="icon  icon--twitter">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M15.969,3.058c-0.586,0.26-1.217,0.436-1.878,0.515c0.675-0.405,1.194-1.045,1.438-1.809
+                  c-0.632,0.375-1.332,0.647-2.076,0.793c-0.596-0.636-1.446-1.033-2.387-1.033c-1.806,0-3.27,1.464-3.27,3.27 c0,0.256,0.029,0.506,0.085,0.745C5.163,5.404,2.753,4.102,1.14,2.124C0.859,2.607,0.698,3.168,0.698,3.767 c0,1.134,0.577,2.135,1.455,2.722C1.616,6.472,1.112,6.325,0.671,6.08c0,0.014,0,0.027,0,0.041c0,1.584,1.127,2.906,2.623,3.206 C3.02,9.402,2.731,9.442,2.433,9.442c-0.211,0-0.416-0.021-0.615-0.059c0.416,1.299,1.624,2.245,3.055,2.271 c-1.119,0.877-2.529,1.4-4.061,1.4c-0.264,0-0.524-0.015-0.78-0.046c1.447,0.928,3.166,1.469,5.013,1.469 c6.015,0,9.304-4.983,9.304-9.304c0-0.142-0.003-0.283-0.009-0.423C14.976,4.29,15.531,3.714,15.969,3.058z"/>
+                </svg>
+              </span>
+
+              <span class="username">maxberggren</span>
+            </a>
+          </li>
+          
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-3">
+        <p class="text"></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+-->
+
+
+  </body>
+
+</html>
