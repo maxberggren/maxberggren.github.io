@@ -5,12 +5,12 @@
     <description></description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Tue, 15 Nov 2016 20:57:58 +0100</pubDate>
-    <lastBuildDate>Tue, 15 Nov 2016 20:57:58 +0100</lastBuildDate>
+    <pubDate>Tue, 15 Nov 2016 21:02:19 +0100</pubDate>
+    <lastBuildDate>Tue, 15 Nov 2016 21:02:19 +0100</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
     
       <item>
-        <title>Polling is failing us: How to collect unbiased data with computional methods</title>
+        <title>Polling is failing us: How to collect unbiased data with computational methods</title>
         <description>&lt;p&gt;In the aftermath of the US elections it is clear that polling has it’s flaws. Pollsters are good at compensating for things like underrepresented minorities, picking fair samples and with the popularization of polls of polls — even aggregating all known data to get a bigger picture. Thanks to the latter, most people now even can relate to probability of winning instead of share of votes.&lt;/p&gt;
 
 &lt;p&gt;This is great. But one big bias in polling makes all this skewed. The fact that there is a established moral high ground. Voting against that is something that might have social implications. So a good proportion of people prompted in a poll will therefore not give a truthful answer.&lt;/p&gt;
