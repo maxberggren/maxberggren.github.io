@@ -5,8 +5,8 @@
     <description></description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 16 Nov 2016 06:50:09 +0100</pubDate>
-    <lastBuildDate>Wed, 16 Nov 2016 06:50:09 +0100</lastBuildDate>
+    <pubDate>Wed, 16 Nov 2016 06:52:41 +0100</pubDate>
+    <lastBuildDate>Wed, 16 Nov 2016 06:52:41 +0100</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
     
       <item>
@@ -112,7 +112,7 @@
 
 &lt;p&gt;It works in a way that we construct a model that &lt;em&gt;could&lt;/em&gt; have generated the data. And then gives it the data and asks questions about the variables in the model.&lt;/p&gt;
 
-&lt;p&gt;In this case $P_T$, the proportion of Trump voters is the variable we want to know about – but we create a model that given an (yet) unknown $P_T$ &lt;em&gt;could&lt;/em&gt; generate the skewed data that we got. It follows the logic we just derived expressing the proportion observed Trump votes ($T_O = 0.5&lt;em&gt;P_T + 0.5&lt;/em&gt;0.5$).&lt;/p&gt;
+&lt;p&gt;In this case $P_T$, the proportion of Trump voters is the variable we want to know about – but we create a model that given an (yet) unknown $P_T$ &lt;em&gt;could&lt;/em&gt; generate the skewed data that we got. It follows the logic we just derived expressing the proportion observed Trump votes.&lt;/p&gt;
 
 &lt;p&gt;Now to the model&lt;/p&gt;
 
