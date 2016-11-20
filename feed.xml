@@ -5,13 +5,13 @@
     <description></description>
     <link>http://maxberggren.se/</link>
     <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 20 Nov 2016 13:01:51 +0100</pubDate>
-    <lastBuildDate>Sun, 20 Nov 2016 13:01:51 +0100</lastBuildDate>
+    <pubDate>Sun, 20 Nov 2016 13:02:56 +0100</pubDate>
+    <lastBuildDate>Sun, 20 Nov 2016 13:02:56 +0100</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
     
       <item>
         <title>Analysis of peoples sexual habits through the controversial Okcupid dataset</title>
-        <description>&lt;p&gt;Emil Kirkegaard made somewhat of a &lt;em&gt;name&lt;/em&gt; for himself when he in May 2016 published a dataset holding 68 371 Okcupid profiles scraped for 2620 variables. The critique was all around academia and Twitter – and mainly regarding:&lt;/p&gt;
+        <description>&lt;p&gt;&lt;a href=&quot;http://emilkirkegaard.dk/&quot;&gt;Emil Kirkegaard&lt;/a&gt; made somewhat of a &lt;em&gt;name&lt;/em&gt; for himself when he in May 2016 published a dataset holding 68 371 Okcupid profiles scraped for 2620 variables. The critique was all around academia and Twitter – and mainly regarding:&lt;/p&gt;
 
 &lt;ul&gt;
   &lt;li&gt;That the dataset was scraped without permission from Okcupid or the users.&lt;/li&gt;
