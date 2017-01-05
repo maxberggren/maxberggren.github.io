@@ -5,13 +5,13 @@
     <description></description>
     <link>http://maxberggren.se/</link>
     <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 05 Jan 2017 09:56:30 +0100</pubDate>
-    <lastBuildDate>Thu, 05 Jan 2017 09:56:30 +0100</lastBuildDate>
+    <pubDate>Thu, 05 Jan 2017 21:17:06 +0100</pubDate>
+    <lastBuildDate>Thu, 05 Jan 2017 21:17:06 +0100</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
     
       <item>
         <title>Plotting time series in Python with labels aligned to data</title>
-        <description>&lt;p&gt;Randal Olson did a nice example of how to instead of a classic legend, &lt;a href=&quot;www.randalolson.com/2014/06/28/how-to-make-beautiful-data-visualizations-in-python-with-matplotlib/&quot;&gt;put every label by their corresponding line&lt;/a&gt;. This is a nice technique when there are many labels. Having to always look at the legend makes interpretation hard.&lt;/p&gt;
+        <description>&lt;p&gt;Randal Olson did a nice example of how to instead of a classic legend, &lt;a href=&quot;http://www.randalolson.com/2014/06/28/how-to-make-beautiful-data-visualizations-in-python-with-matplotlib/&quot;&gt;put every label by their corresponding line&lt;/a&gt;. This is a nice technique when there are many labels. Having to always look at the legend makes interpretation hard.&lt;/p&gt;
 
 &lt;p&gt;Decided to extend upon his work making the alignment of the labels automatic, without them overlaping – and by leveraging Seaborn and Pandas for the plotting. Putting it here for future use and for others.&lt;/p&gt;
 
