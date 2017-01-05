@@ -3,14 +3,14 @@
   <channel>
     <title>MAX BERGGREN</title>
     <description></description>
-    <link>http://localhost:4000/</link>
-    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 05 Jan 2017 09:44:51 +0100</pubDate>
-    <lastBuildDate>Thu, 05 Jan 2017 09:44:51 +0100</lastBuildDate>
+    <link>http://maxberggren.se/</link>
+    <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Thu, 05 Jan 2017 09:56:30 +0100</pubDate>
+    <lastBuildDate>Thu, 05 Jan 2017 09:56:30 +0100</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
     
       <item>
-        <title>Plotting timeseries in Python with labels aligned to data</title>
+        <title>Plotting time series in Python with labels aligned to data</title>
         <description>&lt;p&gt;Randal Olson did a nice example of how to instead of a classic legend, &lt;a href=&quot;www.randalolson.com/2014/06/28/how-to-make-beautiful-data-visualizations-in-python-with-matplotlib/&quot;&gt;put every label by their corresponding line&lt;/a&gt;. This is a nice technique when there are many labels. Having to always look at the legend makes interpretation hard.&lt;/p&gt;
 
 &lt;p&gt;Decided to extend upon his work making the alignment of the labels automatic, without them overlaping – and by leveraging Seaborn and Pandas for the plotting. Putting it here for future use and for others.&lt;/p&gt;
@@ -114,8 +114,8 @@
 &lt;p&gt;&lt;img src=&quot;/assets/legend-right_6_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 </description>
         <pubDate>Mon, 21 Nov 2016 00:39:50 +0100</pubDate>
-        <link>http://localhost:4000/2016/11/21/right-labels/</link>
-        <guid isPermaLink="true">http://localhost:4000/2016/11/21/right-labels/</guid>
+        <link>http://maxberggren.se/2016/11/21/right-labels/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/11/21/right-labels/</guid>
         
         <category>python,</category>
         
@@ -290,8 +290,8 @@
 &lt;p&gt;There are of course some problems with this method. Respondees could perhaps not understand what they are supposed to do in the flipping of coins here and there, and you need to collect more responses to battle the noise. But since it’s obvious that polling does not measure peoples true intentions in the case of a controversial alternative, data people needs to start thinking about alternative methods in understanding people.&lt;/p&gt;
 </description>
         <pubDate>Tue, 15 Nov 2016 21:39:50 +0100</pubDate>
-        <link>http://localhost:4000/2016/11/15/unbiased-data/</link>
-        <guid isPermaLink="true">http://localhost:4000/2016/11/15/unbiased-data/</guid>
+        <link>http://maxberggren.se/2016/11/15/unbiased-data/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/11/15/unbiased-data/</guid>
         
         <category>python,</category>
         
@@ -1477,8 +1477,8 @@ MCMC gives an lower and upper bound for this of 0.384673816867 and 0.56955490511
 
 </description>
         <pubDate>Mon, 15 Aug 2016 21:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2016/08/15/SD/</link>
-        <guid isPermaLink="true">http://localhost:4000/2016/08/15/SD/</guid>
+        <link>http://maxberggren.se/2016/08/15/SD/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/08/15/SD/</guid>
         
         <category>python,</category>
         
@@ -1691,8 +1691,8 @@ plot({
 
 </description>
         <pubDate>Thu, 14 Jul 2016 21:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2016/07/14/atomic-parts-of-town-names/</link>
-        <guid isPermaLink="true">http://localhost:4000/2016/07/14/atomic-parts-of-town-names/</guid>
+        <link>http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/</guid>
         
         <category>python,</category>
         
@@ -1733,8 +1733,8 @@ plot({
 &lt;p&gt;Code for the bot can be found on my &lt;a href=&quot;https://github.com/maxberggren/shamebot&quot;&gt;Github&lt;/a&gt; and the twitter account connected with it is &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;Shamebot3&lt;/a&gt; (shamebot one and two was already taken).&lt;/p&gt;
 </description>
         <pubDate>Wed, 05 Aug 2015 21:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2015/08/05/shamebot/</link>
-        <guid isPermaLink="true">http://localhost:4000/2015/08/05/shamebot/</guid>
+        <link>http://maxberggren.se/2015/08/05/shamebot/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/08/05/shamebot/</guid>
         
         <category>python,</category>
         
@@ -1888,8 +1888,8 @@ ax.add_collection(PatchCollection(patches,
 &lt;p&gt;&lt;img src=&quot;/assets/tutorial_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
 </description>
         <pubDate>Tue, 04 Aug 2015 21:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2015/08/04/basemap/</link>
-        <guid isPermaLink="true">http://localhost:4000/2015/08/04/basemap/</guid>
+        <link>http://maxberggren.se/2015/08/04/basemap/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/08/04/basemap/</guid>
         
         <category>maps,</category>
         
@@ -1966,8 +1966,8 @@ r.start()
 
 </description>
         <pubDate>Wed, 10 Jun 2015 21:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2015/06/10/wisper-game/</link>
-        <guid isPermaLink="true">http://localhost:4000/2015/06/10/wisper-game/</guid>
+        <link>http://maxberggren.se/2015/06/10/wisper-game/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/06/10/wisper-game/</guid>
         
         <category>graphs</category>
         
@@ -1980,8 +1980,8 @@ r.start()
 
 </description>
         <pubDate>Mon, 18 May 2015 22:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2015/05/18/slides-nodalida-2015/</link>
-        <guid isPermaLink="true">http://localhost:4000/2015/05/18/slides-nodalida-2015/</guid>
+        <link>http://maxberggren.se/2015/05/18/slides-nodalida-2015/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/05/18/slides-nodalida-2015/</guid>
         
         <category>academic</category>
         
@@ -1997,8 +1997,8 @@ r.start()
 &lt;p&gt;In the same way that a photograph takes you back - I’ve been starring at this image for the last couple of minutes or so.&lt;/p&gt;
 </description>
         <pubDate>Wed, 29 Apr 2015 21:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2015/04/29/life-graph/</link>
-        <guid isPermaLink="true">http://localhost:4000/2015/04/29/life-graph/</guid>
+        <link>http://maxberggren.se/2015/04/29/life-graph/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/04/29/life-graph/</guid>
         
         <category>graphs</category>
         
@@ -2190,8 +2190,8 @@ print balances
 
 </description>
         <pubDate>Wed, 15 Apr 2015 18:39:50 +0200</pubDate>
-        <link>http://localhost:4000/2015/04/15/martingale-strategy/</link>
-        <guid isPermaLink="true">http://localhost:4000/2015/04/15/martingale-strategy/</guid>
+        <link>http://maxberggren.se/2015/04/15/martingale-strategy/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/04/15/martingale-strategy/</guid>
         
         <category>betting</category>
         
