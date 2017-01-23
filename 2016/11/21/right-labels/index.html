@@ -175,7 +175,7 @@
 <span class="n">f</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">11</span><span class="p">))</span>        
 <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s">'Paired'</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
 
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()):</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
 
     <span class="c"># Get a color</span>
     <span class="n">color</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">positions</span><span class="p">))</span>
@@ -184,7 +184,7 @@
 
     <span class="c"># Add the text to the right</span>
     <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-        <span class="n">df</span><span class="p">[</span><span class="n">x</span><span class="p">]</span><span class="o">.</span><span class="nb">max</span><span class="p">()</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
         <span class="n">position</span><span class="p">,</span> <span class="n">column</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
         <span class="n">color</span><span class="o">=</span><span class="n">color</span> <span class="c"># Same color as line</span>
     <span class="p">)</span>
@@ -196,6 +196,8 @@
 </div>
 
 <p><img src="/assets/legend-right_6_0.png" alt="png" /></p>
+
+<p>UPDATE: Thanks <a href="https://www.reddit.com/user/pybokeh"><code class="highlighter-rouge">/u/pybokeh</code></a> for fix allowing for varying length of columns and for tip on Python 3.X compability.</p>
 
   </article>
 

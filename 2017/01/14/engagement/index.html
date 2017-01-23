@@ -6,11 +6,11 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width initial-scale=1">
 
-  <title>About</title>
-  <meta name="description" content="">
+  <title>Engagement as a KPI in journalism</title>
+  <meta name="description" content="How media houses measure what is successful journalism and what is not, is central in what kind if journalism we get tomorrow.">
 
   <link rel="stylesheet" href="/css/main.css">
-  <link rel="canonical" href="http://maxberggren.se/about/">
+  <link rel="canonical" href="http://maxberggren.se/2017/01/14/engagement/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
   
   <!-- Font -->
@@ -90,41 +90,75 @@
         <div class="post">
 
   <header class="post-header">
-    <h1 class="post-title">About</h1>
+    <h1 class="post-title">Engagement as a KPI in journalism</h1>
+    <p class="post-meta">Jan 14, 2017</p>
   </header>
 
   <article class="post-content">
-    <p>Working as data scientist at Swedish news paper <a href="http://dn.se">Dagens Nyheter</a>. Previously data scientist/computational linguist at <a href="http://www.gavagai.se">Gavagai</a> Labs developing methods and algorithms for finding emerging words in the Swedish language (SINUS research project - Swedish Research Council 2013-2017).</p>
+    <p>How media houses measure what is successful journalism and what is not, is central in what kind if journalism we get tomorrow.</p>
 
-<p>Husband, father, map lover. Background before engineering in web development and retouch.</p>
+<p>If you measure clicks, you get clickbait. If you measure money, you get content promising something it can’t hold.</p>
 
-<p>I like making sense of data with code and visualizations. Passionate about nature, equality and sustainability.</p>
-
-<p>More of me:</p>
+<p>So now everybody is talking about engagement, but what is it?</p>
 
 <ul>
-  <li><a href="https://www.linkedin.com/pub/max-berggren/4/2a/5ba">Linkedin</a></li>
-  <li><a href="https://github.com/maxberggren/">GitHub</a></li>
-  <li><a href="https://www.flickr.com/photos/maxberggren/">Flickr</a></li>
-  <li><a href="https://www.twitter.com/maxberggren/">Twitter</a></li>
+  <li>
+    <p><strong>Is engagement how long a visitor is engaging with your content?</strong>
+  Well, maybe – but short content can be engaging but will never see long time spent.</p>
+  </li>
+  <li>
+    <p><strong>Is it how much social interaction an article is getting?</strong>
+  It might as well be negative interaction. Or worse, shares done to build personal brand without even reading the content.</p>
+  </li>
+  <li>
+    <p><strong>Is it what percentage of an article the users have reached (i.e. scroll depth)?</strong>
+  Scrolling quickly though an article should probably not count as engaging.</p>
+  </li>
 </ul>
 
-<p>Contact:</p>
+<p>I’d say engagement is <strong>perceived value</strong>. And I propose that it might be calculated from how much better than expected an article is performing. Wait, what? Let’s look at a graph.</p>
 
-<ul>
-  <li><a href="mailto:maxberggren@gmail.com">maxberggren@gmail.com</a></li>
-  <li>+46 (0)73 64 93 850</li>
-</ul>
+<p>Here’s every article published last year by Swedish news site Dagens Nyheter:</p>
 
-<p>Publications:</p>
+<p><img src="/assets/articles.png" /></p>
 
-<ul>
-  <li><a href="http://aclweb.org/anthology/W/W15/W15-1826.pdf">Inferring the location of authors from words in their texts (2015)</a>: Max Berggren, Jussi Karlgren, Robert Östling, and Mikael Parkvall</li>
-  <li><a href="https://github.com/maxberggren/Bachelor-Thesis/blob/master/BS_Thesis.pdf">Aerodynamic Optimization of a Wind Turbine Using a Genetic Algorithm, Blade Element Momentum Theory and Xfoil (2014)</a>: Max Berggren</li>
-</ul>
+<p>Some articles are short and users tend to read most of them. Because they are short. But with long articles, the median active time spent is seldom close to times near what you’d expect if people read approx. 250 words per minute.</p>
+
+<p>That’s fine. People don’t have time to engage in long content. But if the content is engaging more than you’d expect for a 4 page in-depth-whatever. That’s probably a sign of engaging content.</p>
+
+<p>If you like math. That’s,</p>
+
+<p>$ E = \frac{activetime}{f(w)} $</p>
+
+<p>Where $E$ is engagement, $f(w)$ is the function of expected active time given the length $w$ words (red line).</p>
+
+<p>In words it roughly answers: <strong>Given X words, how much better than expected did an article perform?</strong> Which is simply how far above the red line an article positions itself.</p>
+
+<p>So give your journalists the feedback they deserve: “Your content did (relatively) great, even though it’s long and filled with the complexities of the world”.</p>
+
+<p>If we do that, we can value great content and steer away from shortsighted measures that’s threatening the trust in journalism.</p>
+
+<p>Ok, so since you got this far. Let me expand on the above. Words are actually perhaps not a perfect measure on article length. We’ve seen that some articles have long infographics not so easily counted as words. Or just a lot of images. What we could do then is actually to scrape our content for article height in pixels. This is fairer to content of different forms than just words.</p>
+
+<p>Speaking of different forms. Engagement in videos is obviously a topic for another time.</p>
 
   </article>
 
+  
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+      /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+      var disqus_shortname = 'maxberggren'; // required: replace example with your forum shortname
+
+      /* * * DON'T EDIT BELOW THIS LINE * * */
+      (function() {
+          var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  
 </div>
 
       </div>
