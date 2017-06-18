@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width initial-scale=1">
+
+  <title>Using ANNs on small data – Deep Learning vs. Xgboost</title>
+  <meta name="description" content="Andrew Beam does a great job showing that small datasets are not off limits for current neural net methods. If you use the regularisation methods at hand – A...">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://maxberggren.se/2017/06/18/deep-learning-vs-xgboost/">
+  <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
+  
+  <!-- Font -->
+  <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+
+  <!-- Mathjax -->
+  <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+          displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+          processEscapes: true,
+          processEnvironments: true
+    }
+  });
+  MathJax.Hub.Configured();
+  </script>
+
+  <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/monokai_sublime.min.css">
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-698202-1', 'auto');
+    ga('send', 'pageview');
+
+  </script>
+
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">MAX BERGGREN</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <div class="post">
+
+  <header class="post-header">
+    <h1 class="post-title">Using ANNs on small data – Deep Learning vs. Xgboost</h1>
+    <p class="post-meta">Jun 18, 2017</p>
+  </header>
+
+  <article class="post-content">
+    <p>Andrew Beam <a href="http://beamandrew.github.io/deeplearning/2017/06/04/deep_learning_works.html">does a great job</a> showing that small datasets are not off limits for current neural net methods. If you use the regularisation methods at hand – ANNs is entirely possible to use instead of classic methods.</p>
+
+<p>Let’s see how this holds up on up on some benchmark datasets.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s">'ggplot'</span><span class="p">)</span>
+
+<span class="n">seed</span> <span class="o">=</span> <span class="mi">123456</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p>Let’s start with the iris dataset that you nicely can pull with the pandas <code class="highlighter-rouge">read_csv</code> function right of the internets.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">target_variable</span> <span class="o">=</span> <span class="s">'species'</span>
+<span class="n">df</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">'https://gist.githubusercontent.com/curran/a08a1080b88344b0c8a7/raw/d546eaee765268bf2f487608c537c05e22e4b221/iris.csv'</span><span class="p">)</span>
+
+    <span class="c"># Rename columns to lowercase and underscores</span>
+    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+        <span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">' '</span><span class="p">,</span> <span class="s">'_'</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="p">)</span>
+    <span class="p">}))</span>
+    <span class="c"># Switch categorical classes to integers</span>
+    <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">target_variable</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="n">target_variable</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">'category'</span><span class="p">)</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">codes</span><span class="p">})</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<p>There’s three classes and 150 datapoints. Not really <strong>B̫͕̟̱I̜̼͈̖̫G͉ d̙͕a͇͍͕̝̟t̪̝̹̻͉̭ͅa</strong>.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">df</span><span class="p">[</span><span class="n">target_variable</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">bar</span><span class="p">()</span>
+</code></pre>
+</div>
+
+<p><img src="/assets/deep-wine-blog_5_1.png" alt="png" /></p>
+
+<p>We create a feature matrix <code class="highlighter-rouge">X</code> and a target <code class="highlighter-rouge">y</code> from the Pandas dataframe. And since an ANN needs the features to be normalized, let’s do some min-max-scaling before anything else.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">target_variable</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+<span class="n">X</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="c"># Drop target variable</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">target_variable</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c"># Min-max-scaling (only needed for the DL model)</span>
+    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="p">(</span><span class="n">d</span><span class="o">-</span><span class="n">d</span><span class="o">.</span><span class="nb">min</span><span class="p">())</span><span class="o">/</span><span class="n">d</span><span class="o">.</span><span class="nb">max</span><span class="p">())</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">as_matrix</span><span class="p">()</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+<p>We split into a training set and a test set.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">accuracy_score</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span><span class="p">,</span> <span class="n">cross_val_score</span>
+
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">seed</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<p>Import some <code class="highlighter-rouge">keras</code> goodness (and perhaps run <code class="highlighter-rouge">pip install keras</code> first if you need it).</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">keras.models</span> <span class="kn">import</span> <span class="n">Sequential</span>
+<span class="kn">from</span> <span class="nn">keras.callbacks</span> <span class="kn">import</span> <span class="n">EarlyStopping</span><span class="p">,</span> <span class="n">ModelCheckpoint</span>
+<span class="kn">from</span> <span class="nn">keras.layers</span> <span class="kn">import</span> <span class="n">Dense</span><span class="p">,</span> <span class="n">Activation</span><span class="p">,</span> <span class="n">Dropout</span>
+<span class="kn">from</span> <span class="nn">keras</span> <span class="kn">import</span> <span class="n">optimizers</span>
+</code></pre>
+</div>
+
+<p>And set up a thee layer deep and 128 wide net. Nothing fancy, not even sure this would qualify as deep learning – but throw in some dropout between them to help it to not overfit.</p>
+
+<p>Learning rate for the optimization method <code class="highlighter-rouge">Adam</code> might be something to tune on other datasets but here 0.001 seems to work nicely.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">m</span> <span class="o">=</span> <span class="n">Sequential</span><span class="p">()</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s">'relu'</span><span class="p">,</span> <span class="n">input_shape</span><span class="o">=</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],)))</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s">'relu'</span><span class="p">))</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dense</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s">'relu'</span><span class="p">))</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+<span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Dense</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">y</span><span class="p">)),</span> <span class="n">activation</span><span class="o">=</span><span class="s">'softmax'</span><span class="p">))</span>
+
+<span class="n">m</span><span class="o">.</span><span class="nb">compile</span><span class="p">(</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">),</span>
+    <span class="n">loss</span><span class="o">=</span><span class="s">'categorical_crossentropy'</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s">'accuracy'</span><span class="p">]</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">EarlyStopping</code> helps us stop the training when the validation set is not improving any more – which helps us avoid overfitting. And to keep the checkpoint just before overfitting occurs, <code class="highlighter-rouge">ModelCheckpoints</code> let’s us save the best model before decline in validation set performance.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">m</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+    <span class="c"># Feature matrix</span>
+    <span class="n">X_train</span><span class="p">,</span>
+    <span class="c"># Target class one-hot-encoded</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">get_dummies</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">y_train</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">as_matrix</span><span class="p">(),</span>
+    <span class="c"># Iterations to be run if not stopped by EarlyStopping</span>
+    <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">callbacks</span><span class="o">=</span><span class="p">[</span>
+        <span class="c"># Stop iterations when validation loss has not improved</span>
+        <span class="n">EarlyStopping</span><span class="p">(</span><span class="n">monitor</span><span class="o">=</span><span class="s">'val_loss'</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">25</span><span class="p">),</span>
+        <span class="c"># Nice for keeping the last model before overfitting occurs</span>
+        <span class="n">ModelCheckpoint</span><span class="p">(</span>
+            <span class="s">'best.model'</span><span class="p">,</span>
+            <span class="n">monitor</span><span class="o">=</span><span class="s">'val_loss'</span><span class="p">,</span>
+            <span class="n">save_best_only</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+    <span class="p">],</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">validation_split</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># Load the best model</span>
+<span class="n">m</span><span class="o">.</span><span class="n">load_weights</span><span class="p">(</span><span class="s">"best.model"</span><span class="p">)</span>
+
+<span class="c"># Keep track of what class corresponds to what index</span>
+<span class="n">mapping</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">get_dummies</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">y_train</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">prefix</span><span class="o">=</span><span class="s">''</span><span class="p">,</span> <span class="n">prefix_sep</span><span class="o">=</span><span class="s">''</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+<span class="p">)</span>
+<span class="n">y_test_preds</span> <span class="o">=</span> <span class="p">[</span><span class="n">mapping</span><span class="p">[</span><span class="n">pred</span><span class="p">]</span> <span class="k">for</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
+</code></pre>
+</div>
+
+<p>Now we can assess the performance on the test set. Below is a confusion matrix showing all predictions held up to reality.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">pd</span><span class="o">.</span><span class="n">crosstab</span><span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">'Actual'</span><span class="p">),</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y_test_preds</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">'Predicted'</span><span class="p">),</span>
+    <span class="n">margins</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>18</td>
+      <td>0</td>
+      <td>0</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>16</td>
+      <td>0</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>0</td>
+      <td>16</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>18</td>
+      <td>16</td>
+      <td>16</td>
+      <td>50</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">print</span> <span class="s">'Accuracy: {0:.3f}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_test_preds</span><span class="p">))</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 1.000
+</code></pre>
+</div>
+
+<p>Actually a perfect score. We will now do the same with an good old <code class="highlighter-rouge">xgboost</code> (<code class="highlighter-rouge">conda install xgboost</code>) with the nice <code class="highlighter-rouge">sklearn</code> api.</p>
+
+<p>Finding the right hyperparameters is a task well suited for an Bayesian approach that can test the alternatives in an effective way without any gradient. <code class="highlighter-rouge">GridSearch</code> and such takes alot of time – this way we instead give it a <code class="highlighter-rouge">parameter space</code> and a “budget”. It will then in it’s most cost effective way test the hyperparameters of <code class="highlighter-rouge">xgboost</code> under those constraints.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">xgboost.sklearn</span> <span class="kn">import</span> <span class="n">XGBClassifier</span>
+
+<span class="n">params_fixed</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">'objective'</span><span class="p">:</span> <span class="s">'binary:logistic'</span><span class="p">,</span>
+    <span class="s">'silent'</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="s">'seed'</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c"># The space to search</span>
+<span class="n">space</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s">'max_depth'</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+    <span class="s">'learning_rate'</span><span class="p">:</span> <span class="p">(</span><span class="mi">10</span><span class="o">**-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">10</span><span class="o">**-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="s">'n_estimators'</span><span class="p">:</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">200</span><span class="p">),</span>
+    <span class="s">'min_child_weight'</span><span class="p">:</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+    <span class="s">'subsample'</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="s">'colsample_bytree'</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="n">reg</span> <span class="o">=</span> <span class="n">XGBClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">params_fixed</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">objective</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="s">""" Wrap a cross validated inverted `accuracy` as objective func """</span>
+    <span class="n">reg</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">params</span><span class="p">)})</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cross_val_score</span><span class="p">(</span>
+        <span class="n">reg</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">scoring</span><span class="o">=</span><span class="s">'accuracy'</span><span class="p">)</span>
+    <span class="p">)</span>
+</code></pre>
+</div>
+
+<p>For this we use <code class="highlighter-rouge">skopt</code> (<code class="highlighter-rouge">pip install scikit-optimize</code>). I’ve given it 50 iterations to explore the hyperparameter space. Might be some more performance to squeeze out, but probably not.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">skopt</span> <span class="kn">import</span> <span class="n">gp_minimize</span>
+<span class="n">res_gp</span> <span class="o">=</span> <span class="n">gp_minimize</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">n_calls</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+<span class="n">best_hyper_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">res_gp</span><span class="o">.</span><span class="n">x</span><span class="p">)}</span>
+
+<span class="k">print</span> <span class="s">"Best accuracy score ="</span><span class="p">,</span> <span class="mi">1</span><span class="o">-</span><span class="n">res_gp</span><span class="o">.</span><span class="n">fun</span>
+<span class="k">print</span> <span class="s">"Best parameters ="</span><span class="p">,</span> <span class="n">best_hyper_params</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Best accuracy score = 0.96
+Best parameters = {'colsample_bytree': 1.0, 'learning_rate': 0.10000000000000001, 'min_child_weight': 5, 'n_estimators': 45, 'subsample': 1, 'max_depth': 5}
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">skopt.plots</span> <span class="kn">import</span> <span class="n">plot_convergence</span>
+<span class="n">plot_convergence</span><span class="p">(</span><span class="n">res_gp</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p><img src="/assets/deep-wine-blog_24_1.png" alt="png" /></p>
+
+<p>Now let’s fix these hyperparameters and evaluate on the test set. This is exactly the same test set as Keras got to be clear.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">params</span> <span class="o">=</span> <span class="n">best_hyper_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">params_fixed</span><span class="p">)</span>
+
+<span class="n">clf</span> <span class="o">=</span> <span class="n">XGBClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">params</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">y_test_preds</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">pd</span><span class="o">.</span><span class="n">crosstab</span><span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">'Actual'</span><span class="p">),</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y_test_preds</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">'Predicted'</span><span class="p">),</span>
+    <span class="n">margins</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>18</td>
+      <td>0</td>
+      <td>0</td>
+      <td>18</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>15</td>
+      <td>1</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>2</td>
+      <td>14</td>
+      <td>16</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>18</td>
+      <td>17</td>
+      <td>15</td>
+      <td>50</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">print</span> <span class="s">'Accuracy: {0:.3f}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">y_test_preds</span><span class="p">))</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 0.940
+</code></pre>
+</div>
+
+<p>The deep (?) net got all datapoints right while <code class="highlighter-rouge">xgboost</code> missed three of them. On the other hand if you change the seed and rerun the code it might as well be <code class="highlighter-rouge">xgboost</code> coming up on top so I wouldn’t read to much into it.</p>
+
+<p>Let’s generalize the code above so that we can plug in any dataset of choosing and see if this holds for harder problems. While we’re at it, I’ve added a boostrap on the accuracy statistic to give a feel about the uncertanty. I’ve put the code <a href="https://gist.github.com/maxberggren/b3ae92b26fd7039ccf22d937d49b1dfd">in this gist</a> since it’s more or less just a repetition of the code above.</p>
+
+<h2 id="telecom-churn-dataset-n2325">Telecom churn dataset (n=2325)</h2>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">compare_on_dataset</span><span class="p">(</span>
+    <span class="s">'https://community.watsonanalytics.com/wp-content/uploads/2015/03/WA_Fn-UseC_-Telco-Customer-Churn.csv?cm_mc_uid=06267660176214972094054&amp;cm_mc_sid_50200000=1497209405&amp;cm_mc_sid_52640000=1497209405'</span><span class="p">,</span>
+    <span class="n">target_variable</span><span class="o">=</span><span class="s">'churn'</span><span class="p">,</span>
+    <span class="n">lr</span><span class="o">=</span><span class="mf">0.0005</span><span class="p">,</span>
+    <span class="n">patience</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+<h4 id="ann">ANN</h4>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1478</td>
+      <td>270</td>
+      <td>1748</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>218</td>
+      <td>359</td>
+      <td>577</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>1696</td>
+      <td>629</td>
+      <td>2325</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 0.790
+Boostrapped accuracy 95 % interval 0.770223752151 0.809810671256
+</code></pre>
+</div>
+
+<h4 id="xgboost">Xgboost</h4>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1563</td>
+      <td>185</td>
+      <td>1748</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>265</td>
+      <td>312</td>
+      <td>577</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>1828</td>
+      <td>497</td>
+      <td>2325</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 0.806
+Boostrapped accuracy 95 % interval 0.78743545611 - 0.825301204819
+</code></pre>
+</div>
+
+<p>Churn is a bit harder problem, but both methods do well though.</p>
+
+<h2 id="three-class-wine-dataset-n59">Three class wine dataset (n=59)</h2>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">compare_on_dataset</span><span class="p">(</span>
+    <span class="s">'https://gist.githubusercontent.com/tijptjik/9408623/raw/b237fa5848349a14a14e5d4107dc7897c21951f5/wine.csv'</span><span class="p">,</span>
+    <span class="n">target_variable</span><span class="o">=</span><span class="s">'wine'</span><span class="p">,</span>
+    <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+
+<h4 id="ann-1">ANN</h4>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>18</td>
+      <td>1</td>
+      <td>0</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>19</td>
+      <td>0</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>0</td>
+      <td>21</td>
+      <td>21</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>18</td>
+      <td>20</td>
+      <td>21</td>
+      <td>59</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 0.983
+Boostrapped accuracy 95 % interval 0.931034482759 1.0
+</code></pre>
+</div>
+
+<h4 id="xgboost-1">Xgboost</h4>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>19</td>
+      <td>0</td>
+      <td>0</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0</td>
+      <td>19</td>
+      <td>0</td>
+      <td>19</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0</td>
+      <td>0</td>
+      <td>21</td>
+      <td>21</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>19</td>
+      <td>19</td>
+      <td>21</td>
+      <td>59</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 1.000
+Boostrapped accuracy 95 % interval 1.0 1.0
+</code></pre>
+</div>
+
+<p>A very easy dataset that both methods have no problem with. Since the sample size is so small the boostrap will not be much of use to us here.</p>
+
+<h2 id="german-credit-data-n1000">German Credit Data (n=1000)</h2>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">compare_on_dataset</span><span class="p">(</span>
+    <span class="s">'https://onlinecourses.science.psu.edu/stat857/sites/onlinecourses.science.psu.edu.stat857/files/german_credit.csv'</span><span class="p">,</span>
+    <span class="n">target_variable</span><span class="o">=</span><span class="s">'creditability'</span><span class="p">,</span>
+    <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">patience</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
+</code></pre>
+</div>
+<h4 id="ann-2">ANN</h4>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>43</td>
+      <td>45</td>
+      <td>88</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>28</td>
+      <td>214</td>
+      <td>242</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>71</td>
+      <td>259</td>
+      <td>330</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 0.779
+Boostrapped accuracy 95 % interval 0.727272727273 0.830303030303
+</code></pre>
+</div>
+
+<h4 id="xgboost-2">Xgboost</h4>
+
+<div>
+<style>
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Predicted</th>
+      <th>0</th>
+      <th>1</th>
+      <th>All</th>
+    </tr>
+    <tr>
+      <th>Actual</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>37</td>
+      <td>51</td>
+      <td>88</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>25</td>
+      <td>217</td>
+      <td>242</td>
+    </tr>
+    <tr>
+      <th>All</th>
+      <td>62</td>
+      <td>268</td>
+      <td>330</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>Accuracy: 0.770
+Boostrapped accuracy 95 % interval 0.715151515152 0.824242424242
+</code></pre>
+</div>
+
+<p>So sometimes the ANN comes out on top, and sometime it’s <code class="highlighter-rouge">xgboost</code>. I think it’s fair to say that ANNs, controlled for overfitting/overtraining works kinda great even  small data. At least pair with <code class="highlighter-rouge">xgboost</code>.</p>
+
+<p>And the necessary hyperparameter tuning of <code class="highlighter-rouge">xgboost</code> is a pain since it really takes time. On these datasets, training the ANN takes no time at all. So let’s see if ANNs will start to eat <em>small data</em> also anytime soon.</p>
+
+  </article>
+
+  
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+      /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+      var disqus_shortname = 'maxberggren'; // required: replace example with your forum shortname
+
+      /* * * DON'T EDIT BELOW THIS LINE * * */
+      (function() {
+          var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  
+</div>
+
+      </div>
+    </div>
+
+    <!--
+<footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">MAX BERGGREN</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col  footer-col-1">
+        <ul class="contact-list">
+          <li>MAX BERGGREN</li>
+          <li><a href="mailto:maxberggren@gmail.com">maxberggren@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/maxberggren">
+              <span class="icon  icon--github">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/>
+                </svg>
+              </span>
+
+              <span class="username">maxberggren</span>
+            </a>
+          </li>
+          
+
+          
+          <li>
+            <a href="https://twitter.com/maxberggren">
+              <span class="icon  icon--twitter">
+                <svg viewBox="0 0 16 16">
+                  <path fill="#828282" d="M15.969,3.058c-0.586,0.26-1.217,0.436-1.878,0.515c0.675-0.405,1.194-1.045,1.438-1.809
+                  c-0.632,0.375-1.332,0.647-2.076,0.793c-0.596-0.636-1.446-1.033-2.387-1.033c-1.806,0-3.27,1.464-3.27,3.27 c0,0.256,0.029,0.506,0.085,0.745C5.163,5.404,2.753,4.102,1.14,2.124C0.859,2.607,0.698,3.168,0.698,3.767 c0,1.134,0.577,2.135,1.455,2.722C1.616,6.472,1.112,6.325,0.671,6.08c0,0.014,0,0.027,0,0.041c0,1.584,1.127,2.906,2.623,3.206 C3.02,9.402,2.731,9.442,2.433,9.442c-0.211,0-0.416-0.021-0.615-0.059c0.416,1.299,1.624,2.245,3.055,2.271 c-1.119,0.877-2.529,1.4-4.061,1.4c-0.264,0-0.524-0.015-0.78-0.046c1.447,0.928,3.166,1.469,5.013,1.469 c6.015,0,9.304-4.983,9.304-9.304c0-0.142-0.003-0.283-0.009-0.423C14.976,4.29,15.531,3.714,15.969,3.058z"/>
+                </svg>
+              </span>
+
+              <span class="username">maxberggren</span>
+            </a>
+          </li>
+          
+        </ul>
+      </div>
+
+      <div class="footer-col  footer-col-3">
+        <p class="text"></p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+-->
+
+
+  </body>
+
+</html>
