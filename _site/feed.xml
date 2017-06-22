@@ -1,0 +1,3437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>MAX BERGGREN</title>
+    <description></description>
+    <link>http://maxberggren.se/</link>
+    <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Thu, 22 Jun 2017 22:20:41 +0200</pubDate>
+    <lastBuildDate>Thu, 22 Jun 2017 22:20:41 +0200</lastBuildDate>
+    <generator>Jekyll v3.3.0</generator>
+    
+      <item>
+        <title>Using ANNs on small data – Deep Learning vs. Xgboost</title>
+        <description>&lt;p&gt;Andrew Beam &lt;a href=&quot;http://beamandrew.github.io/deeplearning/2017/06/04/deep_learning_works.html&quot;&gt;does a great job&lt;/a&gt; showing that small datasets are not off limits for current neural net methods. If you use the regularisation methods at hand – ANNs is entirely possible to use instead of classic methods.&lt;/p&gt;
+
+&lt;p&gt;Let’s see how this holds up on up on some benchmark datasets.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;%matplotlib inline
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+plt.style.use('ggplot')
+
+seed = 123456
+np.random.seed(seed)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Let’s start with the iris dataset that you nicely can pull with the pandas &lt;code&gt;read_csv&lt;/code&gt; function right of the internets.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;target_variable = 'species'
+df = (
+    pd.read_csv('https://gist.githubusercontent.com/curran/a08a1080b88344b0c8a7/raw/d546eaee765268bf2f487608c537c05e22e4b221/iris.csv')
+
+    # Rename columns to lowercase and underscores
+    .pipe(lambda d: d.rename(columns={
+        k: v for k, v in zip(
+            d.columns,
+            [c.lower().replace(' ', '_') for c in d.columns]
+        )
+    }))
+    # Switch categorical classes to integers
+    .assign(**{target_variable: lambda r: r[target_variable].astype('category').cat.codes})
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;There’s three classes and 150 datapoints. Not really &lt;strong&gt;B̫͕̟̱I̜̼͈̖̫G͉ d̙͕a͇͍͕̝̟t̪̝̹̻͉̭ͅa&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;df[target_variable].value_counts().sort_index().plot.bar()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/deep-wine-blog_5_1.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We create a feature matrix &lt;code&gt;X&lt;/code&gt; and a target &lt;code&gt;y&lt;/code&gt; from the Pandas dataframe. And since an ANN needs the features to be normalized, let’s do some min-max-scaling before anything else.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;y = df[target_variable].values
+X = (
+    # Drop target variable
+    df.drop(target_variable, axis=1)
+    # Min-max-scaling (only needed for the DL model)
+    .pipe(lambda d: (d-d.min())/d.max()).fillna(0)
+    .as_matrix()
+)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;We split into a training set and a test set.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split, cross_val_score
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.33, random_state=seed
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Import some &lt;code&gt;keras&lt;/code&gt; goodness (and perhaps run &lt;code&gt;pip install keras&lt;/code&gt; first if you need it).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from keras.models import Sequential
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.layers import Dense, Activation, Dropout
+from keras import optimizers
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And set up a thee layer deep and 128 wide net. Nothing fancy, not even sure this would qualify as deep learning – but throw in some dropout between them to help it to not overfit.&lt;/p&gt;
+
+&lt;p&gt;Learning rate for the optimization method &lt;code&gt;Adam&lt;/code&gt; might be something to tune on other datasets but here 0.001 seems to work nicely.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;m = Sequential()
+m.add(Dense(128, activation='relu', input_shape=(X.shape[1],)))
+m.add(Dropout(0.5))
+m.add(Dense(128, activation='relu'))
+m.add(Dropout(0.5))
+m.add(Dense(128, activation='relu'))
+m.add(Dropout(0.5))
+m.add(Dense(len(np.unique(y)), activation='softmax'))
+
+m.compile(
+    optimizer=optimizers.Adam(lr=0.001),
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;EarlyStopping&lt;/code&gt; helps us stop the training when the validation set is not improving any more – which helps us avoid overfitting. And to keep the checkpoint just before overfitting occurs, &lt;code&gt;ModelCheckpoints&lt;/code&gt; let’s us save the best model before decline in validation set performance.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;m.fit(
+    # Feature matrix
+    X_train,
+    # Target class one-hot-encoded
+    pd.get_dummies(pd.DataFrame(y_train), columns=[0]).as_matrix(),
+    # Iterations to be run if not stopped by EarlyStopping
+    epochs=200,
+    callbacks=[
+        # Stop iterations when validation loss has not improved
+        EarlyStopping(monitor='val_loss', patience=25),
+        # Nice for keeping the last model before overfitting occurs
+        ModelCheckpoint(
+            'best.model',
+            monitor='val_loss',
+            save_best_only=True,
+            verbose=1
+        )
+    ],
+    verbose=2,
+    validation_split=0.1,
+    batch_size=256,
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;# Load the best model
+m.load_weights(&quot;best.model&quot;)
+
+# Keep track of what class corresponds to what index
+mapping = (
+    pd.get_dummies(pd.DataFrame(y_train), columns=[0], prefix='', prefix_sep='')
+    .columns.astype(int).values
+)
+y_test_preds = [mapping[pred] for pred in m.predict(X_test).argmax(axis=1)]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now we can assess the performance on the test set. Below is a confusion matrix showing all predictions held up to reality.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;pd.crosstab(
+    pd.Series(y_test, name='Actual'),
+    pd.Series(y_test_preds, name='Predicted'),
+    margins=True
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;18&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;18&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;18&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+      &lt;td&gt;50&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;print 'Accuracy: {0:.3f}'.format(accuracy_score(y_test, y_test_preds))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 1.000
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Actually a perfect score. We will now do the same with an good old &lt;code&gt;xgboost&lt;/code&gt; (&lt;code&gt;conda install xgboost&lt;/code&gt;) with the nice &lt;code&gt;sklearn&lt;/code&gt; api.&lt;/p&gt;
+
+&lt;p&gt;Finding the right hyperparameters is a task well suited for an Bayesian approach that can test the alternatives in an effective way without any gradient. &lt;code&gt;GridSearch&lt;/code&gt; and such takes alot of time – this way we instead give it a &lt;code&gt;parameter space&lt;/code&gt; and a “budget”. It will then in it’s most cost effective way test the hyperparameters of &lt;code&gt;xgboost&lt;/code&gt; under those constraints.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from xgboost.sklearn import XGBClassifier
+
+params_fixed = {
+    'objective': 'binary:logistic',
+    'silent': 1,
+    'seed': seed,
+}
+
+# The space to search
+space = {
+    'max_depth': (1, 5),
+    'learning_rate': (10**-4, 10**-1),
+    'n_estimators': (10, 200),
+    'min_child_weight': (1, 20),
+    'subsample': (0, 1),
+    'colsample_bytree': (0.3, 1)
+}
+
+reg = XGBClassifier(**params_fixed)
+
+def objective(params):
+    &quot;&quot;&quot; Wrap a cross validated inverted `accuracy` as objective func &quot;&quot;&quot;
+    reg.set_params(**{k: p for k, p in zip(space.keys(), params)})
+    return 1-np.mean(cross_val_score(
+        reg, X_train, y_train, cv=5, n_jobs=-1,
+        scoring='accuracy')
+    )
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For this we use &lt;code&gt;skopt&lt;/code&gt; (&lt;code&gt;pip install scikit-optimize&lt;/code&gt;). I’ve given it 50 iterations to explore the hyperparameter space. Might be some more performance to squeeze out, but probably not.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from skopt import gp_minimize
+res_gp = gp_minimize(objective, space.values(), n_calls=50, random_state=seed)
+best_hyper_params = {k: v for k, v in zip(space.keys(), res_gp.x)}
+
+print &quot;Best accuracy score =&quot;, 1-res_gp.fun
+print &quot;Best parameters =&quot;, best_hyper_params
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Best accuracy score = 0.96
+Best parameters = {'colsample_bytree': 1.0, 'learning_rate': 0.10000000000000001, 'min_child_weight': 5, 'n_estimators': 45, 'subsample': 1, 'max_depth': 5}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;from skopt.plots import plot_convergence
+plot_convergence(res_gp)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/deep-wine-blog_24_1.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Now let’s fix these hyperparameters and evaluate on the test set. This is exactly the same test set as Keras got to be clear.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;params = best_hyper_params.copy()
+params.update(params_fixed)
+
+clf = XGBClassifier(**params)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;clf.fit(X_train, y_train)
+y_test_preds = clf.predict(X_test)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;pd.crosstab(
+    pd.Series(y_test, name='Actual'),
+    pd.Series(y_test_preds, name='Predicted'),
+    margins=True
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;18&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;18&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;15&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;2&lt;/td&gt;
+      &lt;td&gt;14&lt;/td&gt;
+      &lt;td&gt;16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;18&lt;/td&gt;
+      &lt;td&gt;17&lt;/td&gt;
+      &lt;td&gt;15&lt;/td&gt;
+      &lt;td&gt;50&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;print 'Accuracy: {0:.3f}'.format(accuracy_score(y_test, y_test_preds))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 0.940
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The deep (?) net got all datapoints right while &lt;code&gt;xgboost&lt;/code&gt; missed three of them. On the other hand if you change the seed and rerun the code it might as well be &lt;code&gt;xgboost&lt;/code&gt; coming up on top so I wouldn’t read to much into it.&lt;/p&gt;
+
+&lt;p&gt;Let’s generalize the code above so that we can plug in any dataset of choosing and see if this holds for harder problems. While we’re at it, I’ve added a boostrap on the accuracy statistic to give a feel about the uncertanty. I’ve put the code &lt;a href=&quot;https://gist.github.com/maxberggren/b3ae92b26fd7039ccf22d937d49b1dfd&quot;&gt;in this gist&lt;/a&gt; since it’s more or less just a repetition of the code above.&lt;/p&gt;
+
+&lt;h2 id=&quot;telecom-churn-dataset-n2325&quot;&gt;Telecom churn dataset (n=2325)&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;compare_on_dataset(
+    'https://community.watsonanalytics.com/wp-content/uploads/2015/03/WA_Fn-UseC_-Telco-Customer-Churn.csv?cm_mc_uid=06267660176214972094054&amp;amp;cm_mc_sid_50200000=1497209405&amp;amp;cm_mc_sid_52640000=1497209405',
+    target_variable='churn',
+    lr=0.0005,
+    patience=5
+)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&quot;ann&quot;&gt;ANN&lt;/h4&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;1478&lt;/td&gt;
+      &lt;td&gt;270&lt;/td&gt;
+      &lt;td&gt;1748&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;218&lt;/td&gt;
+      &lt;td&gt;359&lt;/td&gt;
+      &lt;td&gt;577&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;1696&lt;/td&gt;
+      &lt;td&gt;629&lt;/td&gt;
+      &lt;td&gt;2325&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 0.790
+Boostrapped accuracy 95 % interval 0.770223752151 0.809810671256
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&quot;xgboost&quot;&gt;Xgboost&lt;/h4&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;1563&lt;/td&gt;
+      &lt;td&gt;185&lt;/td&gt;
+      &lt;td&gt;1748&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;265&lt;/td&gt;
+      &lt;td&gt;312&lt;/td&gt;
+      &lt;td&gt;577&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;1828&lt;/td&gt;
+      &lt;td&gt;497&lt;/td&gt;
+      &lt;td&gt;2325&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 0.806
+Boostrapped accuracy 95 % interval 0.78743545611 - 0.825301204819
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Churn is a bit harder problem, but both methods do well though.&lt;/p&gt;
+
+&lt;h2 id=&quot;three-class-wine-dataset-n59&quot;&gt;Three class wine dataset (n=59)&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;compare_on_dataset(
+    'https://gist.githubusercontent.com/tijptjik/9408623/raw/b237fa5848349a14a14e5d4107dc7897c21951f5/wine.csv',
+    target_variable='wine',
+    lr=0.001
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&quot;ann-1&quot;&gt;ANN&lt;/h4&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;18&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;21&lt;/td&gt;
+      &lt;td&gt;21&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;18&lt;/td&gt;
+      &lt;td&gt;20&lt;/td&gt;
+      &lt;td&gt;21&lt;/td&gt;
+      &lt;td&gt;59&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 0.983
+Boostrapped accuracy 95 % interval 0.931034482759 1.0
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&quot;xgboost-1&quot;&gt;Xgboost&lt;/h4&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;19&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;21&lt;/td&gt;
+      &lt;td&gt;21&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;19&lt;/td&gt;
+      &lt;td&gt;19&lt;/td&gt;
+      &lt;td&gt;21&lt;/td&gt;
+      &lt;td&gt;59&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 1.000
+Boostrapped accuracy 95 % interval 1.0 1.0
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;A very easy dataset that both methods have no problem with. Since the sample size is so small the boostrap will not be much of use to us here.&lt;/p&gt;
+
+&lt;h2 id=&quot;german-credit-data-n1000&quot;&gt;German Credit Data (n=1000)&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;compare_on_dataset(
+    'https://onlinecourses.science.psu.edu/stat857/sites/onlinecourses.science.psu.edu.stat857/files/german_credit.csv',
+    target_variable='creditability',
+    lr=0.001,
+    patience=5
+)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&quot;ann-2&quot;&gt;ANN&lt;/h4&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;43&lt;/td&gt;
+      &lt;td&gt;45&lt;/td&gt;
+      &lt;td&gt;88&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;28&lt;/td&gt;
+      &lt;td&gt;214&lt;/td&gt;
+      &lt;td&gt;242&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;71&lt;/td&gt;
+      &lt;td&gt;259&lt;/td&gt;
+      &lt;td&gt;330&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 0.779
+Boostrapped accuracy 95 % interval 0.727272727273 0.830303030303
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&quot;xgboost-2&quot;&gt;Xgboost&lt;/h4&gt;
+
+&lt;div&gt;
+&lt;style&gt;
+    .dataframe thead tr:only-child th {
+        text-align: right;
+    }
+
+    .dataframe thead th {
+        text-align: left;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+&lt;/style&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;Predicted&lt;/th&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;th&gt;All&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Actual&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;37&lt;/td&gt;
+      &lt;td&gt;51&lt;/td&gt;
+      &lt;td&gt;88&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;25&lt;/td&gt;
+      &lt;td&gt;217&lt;/td&gt;
+      &lt;td&gt;242&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;All&lt;/th&gt;
+      &lt;td&gt;62&lt;/td&gt;
+      &lt;td&gt;268&lt;/td&gt;
+      &lt;td&gt;330&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;pre&gt;&lt;code&gt;Accuracy: 0.770
+Boostrapped accuracy 95 % interval 0.715151515152 0.824242424242
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So sometimes the ANN comes out on top, and sometime it’s &lt;code&gt;xgboost&lt;/code&gt;. I think it’s fair to say that ANNs, controlled for overfitting/overtraining works kinda great even  small data. At least pair with &lt;code&gt;xgboost&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;And the necessary hyperparameter tuning of &lt;code&gt;xgboost&lt;/code&gt; is a pain since it really takes time. On these datasets, training the ANN takes no time at all. So let’s see if ANNs will start to eat &lt;em&gt;small data&lt;/em&gt; also anytime soon.&lt;/p&gt;
+</description>
+        <pubDate>Sun, 18 Jun 2017 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2017/06/18/deep-learning-vs-xgboost/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2017/06/18/deep-learning-vs-xgboost/</guid>
+        
+        <category>deep</category>
+        
+        <category>learning,</category>
+        
+        <category>xgboost</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Gender bias in language – analysis of bigrams in a news text corpus</title>
+        <description>&lt;p&gt;Julia Silge recently &lt;a href=&quot;http://juliasilge.com/blog/Gender-Pronouns/&quot;&gt;wrote&lt;/a&gt; a blog post about co-occurances of words together with gendered pronouns. This made me dig up some old code that did the same, but with the difference that it also extends to gendered names besides pronouns. The data is a corpus of Swedish news texts, and I’ve used name statistics from Sweden Statistics (SCB) to parse out what names are male and female.&lt;/p&gt;
+
+&lt;p&gt;So let’s hack up a naive bookkeeping code to count all &lt;a href=&quot;https://en.wikipedia.org/wiki/N-gram&quot;&gt;bigrams&lt;/a&gt; containing he/she/male_name/female_name. My corpus has already replaced all names with &lt;code&gt;female_name&lt;/code&gt;/&lt;code&gt;male_name&lt;/code&gt; since that’s what &lt;a href=&quot;http://www.prognosis.se/&quot;&gt;my gender monitor does&lt;/a&gt;. I’ll use &lt;code&gt;textacy&lt;/code&gt; for tokenization that uses the really fast &lt;code&gt;spaCy&lt;/code&gt; behind the hoods. That said, this still takes some time to run. I did start to redo it in &lt;code&gt;dask&lt;/code&gt;, but I realized that would take more time than to just let it run (see &lt;a href=&quot;https://xkcd.com/1205/&quot;&gt;appropiate xkcd&lt;/a&gt;).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;# For my unorthodox csv
+import sys, csv
+csv.field_size_limit(sys.maxsize)
+
+# A counter for female and male connections
+from collections import Counter
+cnt = {'he': Counter(), 'she': Counter()}
+
+import textacy
+for d in textacy.fileio.read.read_csv('news_corpus.csv'):
+
+    # Extract tokens
+    doc = textacy.Doc(d[0].lower(), lang=u'sv')
+
+    # Extract bigrams
+    ngrams = textacy.extract.ngrams(
+        doc, n=2,
+        filter_stops=False,
+        filter_punct=False,
+        filter_nums=False)
+
+    # Bookkeeping for all bigram findings
+    for gram in ngrams:
+
+        t0 = str(gram[0]) # First token in bigram
+        t1 = str(gram[1]) # Second token in bigram
+
+        if t0 == 'han':
+            cnt['he'][t1] += 1
+        elif t1 == 'han':
+            cnt['he'][t0] += 1
+
+        elif str(t0) == 'male_name':
+            cnt['he'][t1] += 1
+        elif str(t1) == 'male_name':
+            cnt['he'][t0] += 1
+
+        elif str(t0) == 'hon':
+            cnt['she'][t1] += 1
+        elif str(t1) == 'hon':
+            cnt['she'][t0] += 1
+
+        elif str(t0) == 'female_name':
+            cnt['she'][t1] += 1
+        elif str(t1) == 'female_name':
+            cnt['she'][t0] += 1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now &lt;code&gt;cnt['he']&lt;/code&gt; and &lt;code&gt;cnt['she']&lt;/code&gt; holds the frequencies for co-occurances of &lt;em&gt;he&lt;/em&gt; and vice versa for &lt;em&gt;she&lt;/em&gt;. But we want it to be in percent so we can compare. &lt;a href=&quot;http://www.prognosis.se/&quot;&gt;About 75 % of all mentions in news media are of males&lt;/a&gt;, so we need to remove this bias to answer the question “How more often is word X used together with &lt;em&gt;he&lt;/em&gt; rather than &lt;em&gt;she&lt;/em&gt;”.&lt;/p&gt;
+
+&lt;p&gt;So let’s transform to percent and throw away some of the long tail to remove noise (keeping everything under percentile 95).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import pandas as pd
+import numpy as np
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;he = (
+    pd.DataFrame()
+    .from_dict(cnt['he'], orient='index')
+    .rename(columns={0: 'he'})
+    .pipe(lambda d: d[d.he &amp;gt; d.quantile(.95)['he']])
+    .pipe(lambda d: d/d.sum())
+    .sort_values('he', ascending=False)
+)
+
+she = (
+    pd.DataFrame()
+    .from_dict(cnt['she'], orient='index')
+    .rename(columns={0: 'she'})
+    .pipe(lambda d: d[d.she &amp;gt; d.quantile(.95)['she']])
+    .pipe(lambda d: d/d.sum())
+    .sort_values('she', ascending=False)
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For the male connected words that’s,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;he.head(5)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;he&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;.&lt;/th&gt;
+      &lt;td&gt;0.487862&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;har&lt;/th&gt;
+      &lt;td&gt;0.066698&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;är&lt;/th&gt;
+      &lt;td&gt;0.054389&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;var&lt;/th&gt;
+      &lt;td&gt;0.033257&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;–&lt;/th&gt;
+      &lt;td&gt;0.020974&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;and for female connected words,&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;she.head(5)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;she&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;.&lt;/th&gt;
+      &lt;td&gt;0.499746&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;har&lt;/th&gt;
+      &lt;td&gt;0.073374&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;är&lt;/th&gt;
+      &lt;td&gt;0.061925&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;var&lt;/th&gt;
+      &lt;td&gt;0.027128&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;&amp;gt;&lt;/th&gt;
+      &lt;td&gt;0.019119&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;holding what we are interested in. Except the punctuation, and also some emails.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;odds = (
+    # Joining
+    he.merge(she, left_index=True, right_index=True)
+    # Calc logodds
+    .assign(logodds=lambda r: np.log2(r['she'] / r['he']))
+    # Removing punctuation
+    .pipe(lambda d: d[d.index.str.len() &amp;gt; 1])
+    # Removing emails
+    .pipe(lambda d: d[~d.index.str.contains('@')])
+    .pipe(lambda d: d[~d.index.str.contains('kundservice')])
+    .sort_values('logodds', ascending=True)
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now let’s compare the ratios to find out what words are more used in connection to &lt;code&gt;she&lt;/code&gt; and female names. We do this by joining/merging the &lt;code&gt;he&lt;/code&gt; and &lt;code&gt;she&lt;/code&gt; &lt;code&gt;DataFrame&lt;/code&gt;s. Taking the log of this ratio conviniently centers the bias around zero – positive meaning skewed towards females and negative towards male.&lt;/p&gt;
+
+&lt;h2 id=&quot;most-male-connected&quot;&gt;Most male connected&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;odds.query('logodds &amp;lt; 0').head(50)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;he&lt;/th&gt;
+      &lt;th&gt;she&lt;/th&gt;
+      &lt;th&gt;logodds&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;index&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;could&lt;/th&gt;
+      &lt;td&gt;0.002774&lt;/td&gt;
+      &lt;td&gt;0.001636&lt;/td&gt;
+      &lt;td&gt;-0.761978&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;speaks&lt;/th&gt;
+      &lt;td&gt;0.002140&lt;/td&gt;
+      &lt;td&gt;0.001354&lt;/td&gt;
+      &lt;td&gt;-0.660601&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;argues&lt;/th&gt;
+      &lt;td&gt;0.003989&lt;/td&gt;
+      &lt;td&gt;0.002594&lt;/td&gt;
+      &lt;td&gt;-0.620557&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;explains&lt;/th&gt;
+      &lt;td&gt;0.002985&lt;/td&gt;
+      &lt;td&gt;0.002030&lt;/td&gt;
+      &lt;td&gt;-0.555968&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;said&lt;/th&gt;
+      &lt;td&gt;0.004411&lt;/td&gt;
+      &lt;td&gt;0.003046&lt;/td&gt;
+      &lt;td&gt;-0.534531&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;adds&lt;/th&gt;
+      &lt;td&gt;0.002325&lt;/td&gt;
+      &lt;td&gt;0.001636&lt;/td&gt;
+      &lt;td&gt;-0.507164&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;wanted&lt;/th&gt;
+      &lt;td&gt;0.004015&lt;/td&gt;
+      &lt;td&gt;0.002876&lt;/td&gt;
+      &lt;td&gt;-0.481216&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;gave&lt;/th&gt;
+      &lt;td&gt;0.001691&lt;/td&gt;
+      &lt;td&gt;0.001354&lt;/td&gt;
+      &lt;td&gt;-0.320751&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;knows&lt;/th&gt;
+      &lt;td&gt;0.002087&lt;/td&gt;
+      &lt;td&gt;0.001692&lt;/td&gt;
+      &lt;td&gt;-0.302604&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;continues&lt;/th&gt;
+      &lt;td&gt;0.003408&lt;/td&gt;
+      &lt;td&gt;0.002764&lt;/td&gt;
+      &lt;td&gt;-0.302231&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;was&lt;/th&gt;
+      &lt;td&gt;0.033257&lt;/td&gt;
+      &lt;td&gt;0.027128&lt;/td&gt;
+      &lt;td&gt;-0.293883&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;says&lt;/th&gt;
+      &lt;td&gt;0.005442&lt;/td&gt;
+      &lt;td&gt;0.004455&lt;/td&gt;
+      &lt;td&gt;-0.288434&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;saying&lt;/th&gt;
+      &lt;td&gt;0.017143&lt;/td&gt;
+      &lt;td&gt;0.014100&lt;/td&gt;
+      &lt;td&gt;-0.282004&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;saw&lt;/th&gt;
+      &lt;td&gt;0.001875&lt;/td&gt;
+      &lt;td&gt;0.001579&lt;/td&gt;
+      &lt;td&gt;-0.248106&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;can&lt;/th&gt;
+      &lt;td&gt;0.005521&lt;/td&gt;
+      &lt;td&gt;0.004681&lt;/td&gt;
+      &lt;td&gt;-0.238034&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;wrote&lt;/th&gt;
+      &lt;td&gt;0.003091&lt;/td&gt;
+      &lt;td&gt;0.002651&lt;/td&gt;
+      &lt;td&gt;-0.221490&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;–&lt;/th&gt;
+      &lt;td&gt;0.020974&lt;/td&gt;
+      &lt;td&gt;0.018668&lt;/td&gt;
+      &lt;td&gt;-0.168022&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;mentions&lt;/th&gt;
+      &lt;td&gt;0.002008&lt;/td&gt;
+      &lt;td&gt;0.001805&lt;/td&gt;
+      &lt;td&gt;-0.153641&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;started&lt;/th&gt;
+      &lt;td&gt;0.001796&lt;/td&gt;
+      &lt;td&gt;0.001636&lt;/td&gt;
+      &lt;td&gt;-0.135196&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;considers&lt;/th&gt;
+      &lt;td&gt;0.004675&lt;/td&gt;
+      &lt;td&gt;0.004286&lt;/td&gt;
+      &lt;td&gt;-0.125392&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;had&lt;/th&gt;
+      &lt;td&gt;0.016668&lt;/td&gt;
+      &lt;td&gt;0.015961&lt;/td&gt;
+      &lt;td&gt;-0.062552&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;sees&lt;/th&gt;
+      &lt;td&gt;0.005943&lt;/td&gt;
+      &lt;td&gt;0.005753&lt;/td&gt;
+      &lt;td&gt;-0.047070&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;belives&lt;/th&gt;
+      &lt;td&gt;0.006102&lt;/td&gt;
+      &lt;td&gt;0.006035&lt;/td&gt;
+      &lt;td&gt;-0.015996&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;wants&lt;/th&gt;
+      &lt;td&gt;0.011728&lt;/td&gt;
+      &lt;td&gt;0.011618&lt;/td&gt;
+      &lt;td&gt;-0.013629&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;And positive gives skew towards females.&lt;/p&gt;
+
+&lt;h2 id=&quot;most-female-connected&quot;&gt;Most female connected&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;odds.query('logodds &amp;gt; 0').tail(50)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;he&lt;/th&gt;
+      &lt;th&gt;she&lt;/th&gt;
+      &lt;th&gt;logodds&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;index&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;takes&lt;/th&gt;
+      &lt;td&gt;0.003249&lt;/td&gt;
+      &lt;td&gt;0.003384&lt;/td&gt;
+      &lt;td&gt;0.058662&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;come&lt;/th&gt;
+      &lt;td&gt;0.003830&lt;/td&gt;
+      &lt;td&gt;0.004004&lt;/td&gt;
+      &lt;td&gt;0.064124&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;calls&lt;/th&gt;
+      &lt;td&gt;0.001453&lt;/td&gt;
+      &lt;td&gt;0.001523&lt;/td&gt;
+      &lt;td&gt;0.067814&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;comes&lt;/th&gt;
+      &lt;td&gt;0.004253&lt;/td&gt;
+      &lt;td&gt;0.004512&lt;/td&gt;
+      &lt;td&gt;0.085297&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;did&lt;/th&gt;
+      &lt;td&gt;0.002298&lt;/td&gt;
+      &lt;td&gt;0.002482&lt;/td&gt;
+      &lt;td&gt;0.110774&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;means&lt;/th&gt;
+      &lt;td&gt;0.012019&lt;/td&gt;
+      &lt;td&gt;0.013141&lt;/td&gt;
+      &lt;td&gt;0.128750&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;ska&lt;/th&gt;
+      &lt;td&gt;0.003698&lt;/td&gt;
+      &lt;td&gt;0.004061&lt;/td&gt;
+      &lt;td&gt;0.134928&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;has&lt;/th&gt;
+      &lt;td&gt;0.066698&lt;/td&gt;
+      &lt;td&gt;0.073374&lt;/td&gt;
+      &lt;td&gt;0.137624&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;notes&lt;/th&gt;
+      &lt;td&gt;0.003117&lt;/td&gt;
+      &lt;td&gt;0.003440&lt;/td&gt;
+      &lt;td&gt;0.142380&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;goes&lt;/th&gt;
+      &lt;td&gt;0.001664&lt;/td&gt;
+      &lt;td&gt;0.001861&lt;/td&gt;
+      &lt;td&gt;0.161400&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;pekar&lt;/th&gt;
+      &lt;td&gt;0.003196&lt;/td&gt;
+      &lt;td&gt;0.003609&lt;/td&gt;
+      &lt;td&gt;0.175423&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;must&lt;/th&gt;
+      &lt;td&gt;0.001796&lt;/td&gt;
+      &lt;td&gt;0.002030&lt;/td&gt;
+      &lt;td&gt;0.176748&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;became&lt;/th&gt;
+      &lt;td&gt;0.007370&lt;/td&gt;
+      &lt;td&gt;0.008347&lt;/td&gt;
+      &lt;td&gt;0.179618&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;is&lt;/th&gt;
+      &lt;td&gt;0.054389&lt;/td&gt;
+      &lt;td&gt;0.061925&lt;/td&gt;
+      &lt;td&gt;0.187220&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;holds&lt;/th&gt;
+      &lt;td&gt;0.001189&lt;/td&gt;
+      &lt;td&gt;0.001354&lt;/td&gt;
+      &lt;td&gt;0.187396&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;got&lt;/th&gt;
+      &lt;td&gt;0.006551&lt;/td&gt;
+      &lt;td&gt;0.007896&lt;/td&gt;
+      &lt;td&gt;0.269373&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;tells&lt;/th&gt;
+      &lt;td&gt;0.010170&lt;/td&gt;
+      &lt;td&gt;0.012351&lt;/td&gt;
+      &lt;td&gt;0.280359&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;would&lt;/th&gt;
+      &lt;td&gt;0.003328&lt;/td&gt;
+      &lt;td&gt;0.004061&lt;/td&gt;
+      &lt;td&gt;0.286931&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;took&lt;/th&gt;
+      &lt;td&gt;0.003011&lt;/td&gt;
+      &lt;td&gt;0.003722&lt;/td&gt;
+      &lt;td&gt;0.305790&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;gets&lt;/th&gt;
+      &lt;td&gt;0.004042&lt;/td&gt;
+      &lt;td&gt;0.005019&lt;/td&gt;
+      &lt;td&gt;0.312632&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;shows&lt;/th&gt;
+      &lt;td&gt;0.001902&lt;/td&gt;
+      &lt;td&gt;0.002369&lt;/td&gt;
+      &lt;td&gt;0.316679&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;went&lt;/th&gt;
+      &lt;td&gt;0.002589&lt;/td&gt;
+      &lt;td&gt;0.003271&lt;/td&gt;
+      &lt;td&gt;0.337557&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;”&lt;/th&gt;
+      &lt;td&gt;0.013815&lt;/td&gt;
+      &lt;td&gt;0.018047&lt;/td&gt;
+      &lt;td&gt;0.385547&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;write&lt;/th&gt;
+      &lt;td&gt;0.005415&lt;/td&gt;
+      &lt;td&gt;0.007163&lt;/td&gt;
+      &lt;td&gt;0.403491&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;does&lt;/th&gt;
+      &lt;td&gt;0.002853&lt;/td&gt;
+      &lt;td&gt;0.003779&lt;/td&gt;
+      &lt;td&gt;0.405488&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;thinks&lt;/th&gt;
+      &lt;td&gt;0.004834&lt;/td&gt;
+      &lt;td&gt;0.006429&lt;/td&gt;
+      &lt;td&gt;0.411476&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;as&lt;/th&gt;
+      &lt;td&gt;0.002430&lt;/td&gt;
+      &lt;td&gt;0.003271&lt;/td&gt;
+      &lt;td&gt;0.428705&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;dies&lt;/th&gt;
+      &lt;td&gt;0.001030&lt;/td&gt;
+      &lt;td&gt;0.001410&lt;/td&gt;
+      &lt;td&gt;0.452740&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;describes&lt;/th&gt;
+      &lt;td&gt;0.003698&lt;/td&gt;
+      &lt;td&gt;0.005076&lt;/td&gt;
+      &lt;td&gt;0.456856&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;told&lt;/th&gt;
+      &lt;td&gt;0.001294&lt;/td&gt;
+      &lt;td&gt;0.001805&lt;/td&gt;
+      &lt;td&gt;0.479576&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;born&lt;/th&gt;
+      &lt;td&gt;0.001479&lt;/td&gt;
+      &lt;td&gt;0.002087&lt;/td&gt;
+      &lt;td&gt;0.496385&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;laughs&lt;/th&gt;
+      &lt;td&gt;0.000898&lt;/td&gt;
+      &lt;td&gt;0.001297&lt;/td&gt;
+      &lt;td&gt;0.530385&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;lets&lt;/th&gt;
+      &lt;td&gt;0.000925&lt;/td&gt;
+      &lt;td&gt;0.001354&lt;/td&gt;
+      &lt;td&gt;0.549966&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;feels&lt;/th&gt;
+      &lt;td&gt;0.001347&lt;/td&gt;
+      &lt;td&gt;0.001974&lt;/td&gt;
+      &lt;td&gt;0.551144&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;and&lt;/th&gt;
+      &lt;td&gt;0.003381&lt;/td&gt;
+      &lt;td&gt;0.005132&lt;/td&gt;
+      &lt;td&gt;0.602081&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;sits&lt;/th&gt;
+      &lt;td&gt;0.001875&lt;/td&gt;
+      &lt;td&gt;0.002876&lt;/td&gt;
+      &lt;td&gt;0.616964&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;gives&lt;/th&gt;
+      &lt;td&gt;0.001691&lt;/td&gt;
+      &lt;td&gt;0.002764&lt;/td&gt;
+      &lt;td&gt;0.708996&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;asked&lt;/th&gt;
+      &lt;td&gt;0.000766&lt;/td&gt;
+      &lt;td&gt;0.001297&lt;/td&gt;
+      &lt;td&gt;0.759867&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;remembers&lt;/th&gt;
+      &lt;td&gt;0.000819&lt;/td&gt;
+      &lt;td&gt;0.001410&lt;/td&gt;
+      &lt;td&gt;0.783946&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;lifts&lt;/th&gt;
+      &lt;td&gt;0.001242&lt;/td&gt;
+      &lt;td&gt;0.002200&lt;/td&gt;
+      &lt;td&gt;0.825100&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;lives&lt;/th&gt;
+      &lt;td&gt;0.001294&lt;/td&gt;
+      &lt;td&gt;0.002425&lt;/td&gt;
+      &lt;td&gt;0.905841&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;becomes&lt;/th&gt;
+      &lt;td&gt;0.001426&lt;/td&gt;
+      &lt;td&gt;0.004230&lt;/td&gt;
+      &lt;td&gt;1.568217&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h2 id=&quot;pick-out-the-most-skewed-words-for-plotting&quot;&gt;Pick out the most skewed words for plotting&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;headsntails = pd.concat([
+    odds.head(30).query('logodds &amp;lt; 0'),
+    odds.tail(30).query('logodds &amp;gt; 0')
+], axis=0)
+
+# Some styling
+%matplotlib inline
+%config InlineBackend.figure_formats = {'png', 'retina'}
+import seaborn as sns
+import matplotlib.pyplot as plt
+sns.set_palette(&quot;Paired&quot;, 15, .75)
+sns.set_context(&quot;notebook&quot;, font_scale=1.2, rc={&quot;lines.linewidth&quot;: 1.2})
+sns.set_style(&quot;whitegrid&quot;)
+custom_style = {
+            'grid.color': '0.7',
+            'grid.linestyle': '--',
+            'grid.linewidth': 0.5,
+}
+sns.set_style(custom_style)
+
+f, ax = plt.subplots(figsize=(8, 12))
+x = [s.decode('utf-8') for s in headsntails['logodds'].index]
+y = headsntails['logodds'].values
+
+sns.barplot(y, x, palette=&quot;RdBu_r&quot;, ax=ax)
+
+labels = [
+    '{}x'.format(round(2**item, 1))
+    for item in ax.get_xticks()
+]
+ax.set_xticklabels(labels)
+ax.set_xlabel(&quot;Female usage&quot;)
+
+for bar in ax.patches:
+    smaller = 0.3
+    height = bar.get_height()
+    bar.set_height(height*smaller)
+    move = height*(1-smaller)
+    y = bar.get_y()
+    bar.set_y(y+move)
+
+# Finalize the plot
+sns.despine(offset=5)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/gender_4-svd_19_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;So men speaks, explains, says, thinks, [speaking punctuation] and statues. While women tells, describes, remembers, feels, live, recieves and sits. It’s clear that language is a mirror of what kind of values our society holds. Men are in news texts, other than just in real numbers more present – more in focus. More active and in the role as an expert. SAD!&lt;/p&gt;
+</description>
+        <pubDate>Tue, 02 May 2017 01:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2017/05/02/gender-bias/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2017/05/02/gender-bias/</guid>
+        
+        <category>gender,</category>
+        
+        <category>nlp</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Engagement as a KPI in journalism</title>
+        <description>&lt;p&gt;How media houses measure what is successful journalism and what is not, is central in what kind if journalism we get tomorrow.&lt;/p&gt;
+
+&lt;p&gt;If you measure clicks, you get clickbait. If you measure money, you get content promising something it can’t hold.&lt;/p&gt;
+
+&lt;p&gt;So now everybody is talking about engagement, but what is it?&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Is engagement how long a visitor is engaging with your content?&lt;/strong&gt;
+  Well, maybe – but short content can be engaging but will never see long time spent.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Is it how much social interaction an article is getting?&lt;/strong&gt;
+  It might as well be negative interaction. Or worse, shares done to build personal brand without even reading the content.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Is it what percentage of an article the users have reached (i.e. scroll depth)?&lt;/strong&gt;
+  Scrolling quickly though an article should probably not count as engaging.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;I’d say engagement is &lt;strong&gt;perceived value&lt;/strong&gt;. And I propose that it might be calculated from how much better than expected an article is performing. Wait, what? Let’s look at a graph.&lt;/p&gt;
+
+&lt;p&gt;Here’s every article published last year by Swedish news site Dagens Nyheter:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/articles.png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Some articles are short and users tend to read most of them. Because they are short. But with long articles, the median active time spent is seldom close to times near what you’d expect if people read approx. 250 words per minute.&lt;/p&gt;
+
+&lt;p&gt;That’s fine. People don’t have time to engage in long content. But if the content is engaging more than you’d expect for a 4 page in-depth-whatever. That’s probably a sign of engaging content.&lt;/p&gt;
+
+&lt;p&gt;If you like math. That’s,&lt;/p&gt;
+
+&lt;p&gt;$ E = \frac{activetime}{f(w)} $&lt;/p&gt;
+
+&lt;p&gt;Where $E$ is engagement, $f(w)$ is the function of expected active time given the length $w$ words (red line).&lt;/p&gt;
+
+&lt;p&gt;In words it roughly answers: &lt;strong&gt;Given X words, how much better than expected did an article perform?&lt;/strong&gt; Which is simply how far above the red line an article positions itself.&lt;/p&gt;
+
+&lt;p&gt;So give your journalists the feedback they deserve: “Your content did (relatively) great, even though it’s long and filled with the complexities of the world”.&lt;/p&gt;
+
+&lt;p&gt;If we do that, we can value great content and steer away from shortsighted measures that’s threatening the trust in journalism.&lt;/p&gt;
+
+&lt;p&gt;Ok, so since you got this far. Let me expand on the above. Words are actually perhaps not a perfect measure on article length. We’ve seen that some articles have long infographics not so easily counted as words. Or just a lot of images. What we could do then is actually to scrape our content for article height in pixels. This is fairer to content of different forms than just words.&lt;/p&gt;
+
+&lt;p&gt;Speaking of different forms. Engagement in videos is obviously a topic for another time.&lt;/p&gt;
+</description>
+        <pubDate>Sat, 14 Jan 2017 00:39:50 +0100</pubDate>
+        <link>http://maxberggren.se/2017/01/14/engagement/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2017/01/14/engagement/</guid>
+        
+        <category>media,</category>
+        
+        <category>kpis</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Plotting time series in Python with labels aligned to data</title>
+        <description>&lt;p&gt;Randal Olson did a nice example of how to instead of a classic legend, &lt;a href=&quot;http://www.randalolson.com/2014/06/28/how-to-make-beautiful-data-visualizations-in-python-with-matplotlib/&quot;&gt;put every label by their corresponding line&lt;/a&gt;. This is a nice technique when there are many labels. Having to always look at the legend makes interpretation hard.&lt;/p&gt;
+
+&lt;p&gt;Decided to extend upon his work making the alignment of the labels automatic, without them overlaping – and by leveraging Seaborn and Pandas for the plotting. Putting it here for future use and for others.&lt;/p&gt;
+
+&lt;p&gt;Results will be something like this:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/good.png&quot; width=&quot;95%&quot; /&gt;&lt;/p&gt;
+&lt;h6 id=&quot;now-easy-to-mentally-connect-line-with-label&quot;&gt;Now easy to mentally connect line with label&lt;/h6&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;%matplotlib inline
+%config InlineBackend.figure_formats = {'png', 'retina'}
+import matplotlib.pyplot as plt  
+import seaborn as sns
+import pandas as pd  
+
+# I like my plots on a white background
+sns.set_context(&quot;notebook&quot;, font_scale=1.2, rc={&quot;lines.linewidth&quot;: 1.2})
+sns.set_style(&quot;whitegrid&quot;)
+custom_style = {
+            'grid.color': '0.8',
+            'grid.linestyle': '--',
+            'grid.linewidth': 0.5,
+}
+sns.set_style(custom_style)    
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;df = pd.read_csv(&quot;https://raw.githubusercontent.com/maxberggren/legend-right/master/percent-bachelors-degrees-women-usa.csv&quot;)      
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here’s my function taking care of aligning the text to the lines.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def legend_positions(df, y):
+    &quot;&quot;&quot; Calculate position of labels to the right in plot... &quot;&quot;&quot;
+    positions = {}
+    for column in y:    
+        positions[column] = df[column].values[-1] - 0.5    
+
+    def push():
+        &quot;&quot;&quot;
+        ...by puting them to the last y value and
+        pushing until no overlap
+        &quot;&quot;&quot;
+        collisions = 0
+        for column1, value1 in positions.iteritems():
+            for column2, value2 in positions.iteritems():
+                if column1 != column2:
+                    dist = abs(value1-value2)
+                    if dist &amp;lt; 2.5:
+                        collisions += 1
+                        if value1 &amp;lt; value2:
+                            positions[column1] -= .1
+                            positions[column2] += .1
+                        else:
+                            positions[column1] += .1
+                            positions[column2] -= .1
+                        return True
+    while True:
+        pushed = push()
+        if not pushed:
+            break
+
+    return positions
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And we are ready to plot!&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;x = 'Year'
+y = ['Health Professions', 'Public Administration', 'Education',
+     'Psychology', 'Foreign Languages', 'English',    
+     'Art and Performance', 'Biology', 'Agriculture',    
+     'Social Sciences and History', 'Business', 'Math and Statistics',    
+     'Architecture', 'Computer Science', 'Engineering']  
+positions = legend_positions(df, y)
+
+f, ax = plt.subplots(figsize=(8,11))        
+cmap = plt.cm.get_cmap('Paired', len(y))
+
+for i, (column, position) in enumerate(positions.items()):
+
+    # Get a color
+    color = cmap(float(i)/len(positions))
+    # Plot each line separatly so we can be explicit about color
+    ax = df.plot(x=x, y=column, legend=False, ax=ax, color=color)
+
+    # Add the text to the right
+    plt.text(
+        df[x][df[column].last_valid_index()] + 0.5,
+        position, column, fontsize=12,
+        color=color # Same color as line
+    )
+ax.set_ylabel('Female bachelor degrees')
+# Add percent signs
+ax.set_yticklabels(['{:3.0f}%'.format(x) for x in ax.get_yticks()])
+sns.despine()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/legend-right_6_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;UPDATE: Thanks &lt;a href=&quot;https://www.reddit.com/user/pybokeh&quot;&gt;&lt;code&gt;/u/pybokeh&lt;/code&gt;&lt;/a&gt; for fix allowing for varying length of columns and for tip on Python 3.X compability.&lt;/p&gt;
+</description>
+        <pubDate>Mon, 21 Nov 2016 00:39:50 +0100</pubDate>
+        <link>http://maxberggren.se/2016/11/21/right-labels/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/11/21/right-labels/</guid>
+        
+        <category>python,</category>
+        
+        <category>seaborn,</category>
+        
+        <category>labels,</category>
+        
+        <category>legend</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Polling is failing us: How to collect less biased data with computational methods</title>
+        <description>&lt;p&gt;In the aftermath of the US elections it is clear that polling has it’s flaws. Pollsters are good at compensating for things like underrepresented minorities, picking fair samples and with the popularization of polls of polls — even aggregating all known data to get a bigger picture. Thanks to the latter, most people now even can relate to probability of winning instead of share of votes.&lt;/p&gt;
+
+&lt;p&gt;This is great. But one big bias in polling makes all this skewed. The fact that there is a established moral high ground. Voting against that is something that might have social implications. So a good proportion of people prompted in a poll will therefore not give a truthful answer.&lt;/p&gt;
+
+&lt;p&gt;This is clear from both the Swedish election 2014, Brexit and now also the 2016 US presidential  election. The majority of polls underestimated the less socially favorable alternative.&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Referendum&lt;/th&gt;
+      &lt;th&gt;Polls-of-polls &lt;sup&gt;1&lt;/sup&gt;&lt;/th&gt;
+      &lt;th&gt;Outcome&lt;/th&gt;
+      &lt;th&gt;Abs. diff.&lt;/th&gt;
+      &lt;th&gt;Rel. diff.&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Sweden 2014&lt;/td&gt;
+      &lt;td&gt;10 % Sweden Democrats&lt;sup&gt;2&lt;/sup&gt;&lt;/td&gt;
+      &lt;td&gt;~13 %&lt;/td&gt;
+      &lt;td&gt;+3 %&lt;/td&gt;
+      &lt;td&gt;+30 %&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Brexit&lt;/td&gt;
+      &lt;td&gt;~49 % leave&lt;sup&gt;3&lt;/sup&gt;&lt;/td&gt;
+      &lt;td&gt;~52 %&lt;/td&gt;
+      &lt;td&gt;+3 %&lt;/td&gt;
+      &lt;td&gt;+6 %&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;US 2016&lt;/td&gt;
+      &lt;td&gt;~44 % Trump&lt;sup&gt;4&lt;/sup&gt;&lt;/td&gt;
+      &lt;td&gt;~56 %&lt;/td&gt;
+      &lt;td&gt;+12 %&lt;/td&gt;
+      &lt;td&gt;+27 %&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h5 id=&quot;sup1supnormalized-for-decided-voters-sup2supboten-adahttpcornucopiacornubotse201411botten-ada-publicerar-utvardering-ingenhtml-sup3supfinancial-timeshttpsigftcomsitesbrexit-polling-sup4supelectoral-votes-938comhttpprojectsfivethirtyeightcom2016-election-forecastexcidrrpromo&quot;&gt;&lt;sup&gt;1&lt;/sup&gt;Normalized for decided voters. &lt;sup&gt;2&lt;/sup&gt;&lt;a href=&quot;http://cornucopia.cornubot.se/2014/11/botten-ada-publicerar-utvardering-ingen.html&quot;&gt;Boten Ada&lt;/a&gt;. &lt;sup&gt;3&lt;/sup&gt;&lt;a href=&quot;https://ig.ft.com/sites/brexit-polling/&quot;&gt;Financial times&lt;/a&gt;. &lt;sup&gt;4&lt;/sup&gt;Electoral votes &lt;a href=&quot;http://projects.fivethirtyeight.com/2016-election-forecast/?ex_cid=rrpromo&quot;&gt;938.com&lt;/a&gt;.&lt;/h5&gt;
+
+&lt;p&gt;So how do you get people to answer truthfully? One classic method is a &lt;a href=&quot;https://en.wikipedia.org/wiki/Randomized_response&quot;&gt;Randomized Response Model&lt;/a&gt;. In it’s most simple form (two outcomes of the question, like for example the US presidential  election) the respondent is asked to&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;First toss a coin.&lt;/li&gt;
+  &lt;li&gt;If &lt;strong&gt;heads&lt;/strong&gt;: tell what presidential  candidate she will vote for&lt;/li&gt;
+  &lt;li&gt;If &lt;strong&gt;tail&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Toss coin once again and say Clinton if heads and Trump if tail.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;This gives the respondee the possibility to speak freely since the surveyor will not know if it’s an answer governed by chance or a truthful answer.&lt;/p&gt;
+
+&lt;p&gt;But what about the data? We can in fact still model the underlying percentage &lt;strong&gt;before&lt;/strong&gt; the coin flips. We need more data since we are introducing noise. But it might be a small price to pay for unbiased data.&lt;/p&gt;
+
+&lt;p&gt;Let’s look at the different outcomes for this model.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/outcome.png&quot; style=&quot;max-width: 70%!important;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;From this graph we can make an expression for the probability of getting a Trump answer. If $P_T$ is the true proportion of that will vote for Trump, $T_O$ will be observed Trump answers.&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;T_O = 0.5*P_T + 0.5*0.5&lt;/script&gt;
+
+&lt;p&gt;Just for clarity sake, the corresponding expression for proportion observed Clinton votes is:&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;C_O = 0.5*(1-P_T) + 0.5*0.5&lt;/script&gt;
+
+&lt;p&gt;Now let’s create a Bayesian &lt;a href=&quot;https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo&quot;&gt;Markov chain Monte Carlo&lt;/a&gt; model out of this. First let’s generate 1000 true votes.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import pymc3 as pm
+import numpy as np
+
+N = 1000
+true_p = 0.6
+true_votes = np.random.choice([0, 1], size=(N,), p=[1-true_p, true_p])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The true votes is just an array looking something like &lt;code&gt;[1 0 1 0 1 1 1 ... 0 0 1 0 1 0]&lt;/code&gt; with &lt;code&gt;N&lt;/code&gt; entries. Given big enough &lt;code&gt;N&lt;/code&gt; the percentage ones would be close to 60 % since that’s the percentage we choose for generating the random data.&lt;/p&gt;
+
+&lt;p&gt;Now starting from the true votes, we skew them in the same way as our algorithm would.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;skewed_answers = true_votes.copy()
+for i, vote in enumerate(skewed_answers):
+    # If coin comes up heads - change answer
+    if np.random.choice([0, 1], p=[.5, .5]) == 1:
+        # Change to random flip of second coin
+        skewed_answers[i] = np.random.choice([0, 1], p=[.5, .5])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Obviously we would not know the true votes in a real life situation, only the &lt;code&gt;skewed_answers&lt;/code&gt; that’s now been generated.&lt;/p&gt;
+
+&lt;p&gt;Now that we have synthetic data let’s build a model that infers the true votes. This is heavily inspired by chapter 2 in Cam Davidson-Pilon’s great book &lt;a href=&quot;https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers&quot;&gt;Bayesian Methods for Hackers&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;It works in a way that we construct a model that &lt;em&gt;could&lt;/em&gt; have generated the data. And then gives it the data and asks questions about the variables in the model.&lt;/p&gt;
+
+&lt;p&gt;In this case $P_T$, the proportion of Trump voters is the variable we want to know about – but we create a model that given an (yet) unknown $P_T$ &lt;em&gt;could&lt;/em&gt; generate the skewed data that we got. It follows the logic we just derived expressing the proportion observed Trump votes.&lt;/p&gt;
+
+&lt;p&gt;Now to the model&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;%matplotlib inline
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+with pm.Model() as model:
+
+    # Proportion Trump defined as between 0 and 1
+    P_T = pm.Uniform(&quot;prop_trump_votes&quot;, 0, 1)
+
+    # Observed proportion follows this expression
+    P_O = pm.Deterministic(
+        &quot;prop_skewed&quot;,
+        0.5 * P_T + 0.25)
+
+    # A Binomial generates ones and zeros
+    T_O = pm.Binomial(
+        &quot;number_trump_votes&quot;, N,
+        P_O, # by the observed probability
+        observed=sum(skewed_answers))
+    # and we also gave it the observed skewed votes
+    # so it know what to optimize for.
+
+    # Now we run the inference
+    step = pm.Metropolis(vars=[P_T])
+    trace = pm.sample(40000, step=step)
+    burned_trace = trace[2500:]
+
+# Visualizing the distribution of the true proportion P_T
+sns.distplot(
+    burned_trace[&quot;prop_trump_votes&quot;],
+    bins=30, label='Posterior distribution')
+
+sns.plt.xlim(0, 1)
+sns.plt.legend()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt; [-----------------100%-----------------] 40000 of 40000 complete in 3.2 sec
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/RRM2_7_2.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you can see it’s not a clear answer saying 60 % as in &lt;code&gt;true_p&lt;/code&gt; like the data we generated. We get a &lt;em&gt;distribution&lt;/em&gt; of where the true proportion Trump voters $P_T$ lies because&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;our method/algorithm introduced noise in the data&lt;/li&gt;
+  &lt;li&gt;and since there’s always a chance that the data would come up just by the random nature of the universe.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;But from the graph, we can be quite confident that a larger proportion of the voters will choose Trump even with respecting the privacy of the respondents.&lt;/p&gt;
+
+&lt;p&gt;There are of course some problems with this method. Respondees could perhaps not understand what they are supposed to do in the flipping of coins here and there, and you need to collect more responses to battle the noise. But since it’s obvious that polling does not measure peoples true intentions in the case of a controversial alternative, data people needs to start thinking about alternative methods in understanding people.&lt;/p&gt;
+</description>
+        <pubDate>Tue, 15 Nov 2016 21:39:50 +0100</pubDate>
+        <link>http://maxberggren.se/2016/11/15/unbiased-data/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/11/15/unbiased-data/</guid>
+        
+        <category>python,</category>
+        
+        <category>MCMC,</category>
+        
+        <category>voting,</category>
+        
+        <category>trump,</category>
+        
+        <category>clinton</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Investigation of voting patterns demographic correlations in Sweden</title>
+        <description>&lt;p&gt;Sweden have a long tradition of keeping statistics of different KPI:s by municipality through many institutions. Let’s see what KPI:s correlate with different voting patterns. And while we’re at it, demonstrate some Pandas method chaining – and do a Bayesian analysis of the Pearson product-moment correlation coefficient often denoted as Persons &lt;code&gt;r&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Note that the conclusions might mainly be of intrest of Swedes, and there will probably slip in some Swedish. Quick wordlist: &lt;code&gt;kommun = municipality, brott = crime, gravid = pregnant&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;TLDR;&lt;/strong&gt; Sweden Democrats (SD) shows high correlation with mothers &lt;strong&gt;smoking while pregnant&lt;/strong&gt;, unemployment and &lt;strong&gt;motorcycles&lt;/strong&gt;. &lt;strong&gt;The results are a the bottom of the post if you’re not interested in the process&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;And as usual, the Jupyter Notebook (former Ipython notebook) is &lt;a href=&quot;https://github.com/maxberggren/voting-correlation&quot;&gt;here&lt;/a&gt; in a repo together with the data.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+%matplotlib inline
+
+from matplotlib import rcParams
+rcParams['font.family'] = 'monospace'
+rcParams['font.sans-serif'] = ['Courier']
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Starting with the data from the Swedish election 2014, we can read it directly from an url with the very nice Pandas method &lt;code&gt;read_html&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Encapsulating the DataFrame &lt;code&gt;votes&lt;/code&gt; with parentheseses makes method chaining possible. Every method in fact returns a DataFrame which makes every preprocessing step just another step in the chain.&lt;/p&gt;
+
+&lt;h3 id=&quot;percent-votes-in-swedish-election-2014&quot;&gt;Percent votes in Swedish election 2014&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;votes = (pd.read_html('http://www.val.se/val/val2014/slutresultat/K/rike/index.html')[1]
+           .rename(columns={u'Område': 'Kommun'})
+           [['Kommun', 'SD', 'M', 'C', 'FP', 'KD', 'S', 'V', 'MP', 'FI', u'ÖVR', 'BLANK']]
+           .set_index('Kommun')
+           .apply(lambda x: x.str.replace(&quot;,&quot;, &quot;.&quot;)
+                             .str.replace(&quot;%&quot;, &quot;&quot;).astype(float))
+)
+partier = votes.columns
+votes.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;SD&lt;/th&gt;
+      &lt;th&gt;M&lt;/th&gt;
+      &lt;th&gt;C&lt;/th&gt;
+      &lt;th&gt;FP&lt;/th&gt;
+      &lt;th&gt;KD&lt;/th&gt;
+      &lt;th&gt;S&lt;/th&gt;
+      &lt;th&gt;V&lt;/th&gt;
+      &lt;th&gt;MP&lt;/th&gt;
+      &lt;th&gt;FI&lt;/th&gt;
+      &lt;th&gt;ÖVR&lt;/th&gt;
+      &lt;th&gt;BLANK&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;10.64&lt;/td&gt;
+      &lt;td&gt;21.08&lt;/td&gt;
+      &lt;td&gt;4.95&lt;/td&gt;
+      &lt;td&gt;3.28&lt;/td&gt;
+      &lt;td&gt;3.50&lt;/td&gt;
+      &lt;td&gt;33.59&lt;/td&gt;
+      &lt;td&gt;6.25&lt;/td&gt;
+      &lt;td&gt;5.70&lt;/td&gt;
+      &lt;td&gt;0.18&lt;/td&gt;
+      &lt;td&gt;10.83&lt;/td&gt;
+      &lt;td&gt;1.39&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;7.48&lt;/td&gt;
+      &lt;td&gt;21.58&lt;/td&gt;
+      &lt;td&gt;6.17&lt;/td&gt;
+      &lt;td&gt;10.30&lt;/td&gt;
+      &lt;td&gt;6.44&lt;/td&gt;
+      &lt;td&gt;29.19&lt;/td&gt;
+      &lt;td&gt;6.85&lt;/td&gt;
+      &lt;td&gt;10.81&lt;/td&gt;
+      &lt;td&gt;0.30&lt;/td&gt;
+      &lt;td&gt;0.89&lt;/td&gt;
+      &lt;td&gt;1.21&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;14.44&lt;/td&gt;
+      &lt;td&gt;19.70&lt;/td&gt;
+      &lt;td&gt;14.89&lt;/td&gt;
+      &lt;td&gt;1.74&lt;/td&gt;
+      &lt;td&gt;3.12&lt;/td&gt;
+      &lt;td&gt;28.77&lt;/td&gt;
+      &lt;td&gt;4.08&lt;/td&gt;
+      &lt;td&gt;3.49&lt;/td&gt;
+      &lt;td&gt;0.20&lt;/td&gt;
+      &lt;td&gt;9.56&lt;/td&gt;
+      &lt;td&gt;1.98&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Now let’s read some migration patterns straight of the web. I.e. what municipalitys that had a positive net growth in terms of people living there.&lt;/p&gt;
+
+&lt;h3 id=&quot;net-inhabitant-growth&quot;&gt;Net inhabitant growth&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17248'
+col = u'Befolkningsökning, 2012-2015, procent, treårsbasis'
+befolkningsokning = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].str.replace(u&quot;,&quot;, u&quot;.&quot;).astype(float)})
+      .set_index('Kommun')
+)
+befolkningsokning.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Befolkningsökning, 2012-2015, procent, treårsbasis&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;3.7&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;3.3&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;2.9&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;rating-of-how-good-a-municipality-is-for-companies&quot;&gt;Rating of how good a municipality is for companies&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17257'
+col = u'Företagsklimat, ranking 1-290, 2015, ordningstal'
+foretagsklimat = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].astype(int)})
+      .set_index('Kommun')
+)
+foretagsklimat.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Företagsklimat, ranking 1-290, 2015, ordningstal&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;43&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;185&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;221&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;percent-people-with-a-higher-education&quot;&gt;Percent people with a higher education&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17251'
+col = u'Andel högskoleutbildade, 2015, procent'
+hogskoleutbildning = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].str.replace(u&quot;,&quot;, u&quot;.&quot;).astype(float)})
+      .set_index('Kommun')
+)
+hogskoleutbildning.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Andel högskoleutbildade, 2015, procent&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;18.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;24.3&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;15.0&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;percent-early-retirees&quot;&gt;Percent early retirees&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17256'
+col = u'Andel förtidspensionärer, 2015, procent'
+fortidspensionarer = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].str.replace(u&quot;,&quot;, u&quot;.&quot;).astype(float)})
+      .set_index('Kommun')
+)
+fortidspensionarer.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Andel förtidspensionärer, 2015, procent&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;5.5&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;6.5&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;6.0&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;median-income&quot;&gt;Median income&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17249'
+col = u'Medianinkomst, 2014, kronor'
+medianinkomst = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].str.replace(u&quot;\xa0&quot;, u&quot;&quot;).astype(int)})
+      .set_index('Kommun')
+)
+medianinkomst.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Medianinkomst, 2014, kronor&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;273684&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;259211&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;241077&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;unemployment-rate&quot;&gt;Unemployment rate&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17255'
+col = u'Öppen arbetslöshet (Arbetsförmedlingen), 2015, procent'
+arbetsloshet = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].str.replace(u&quot;,&quot;, u&quot;.&quot;).astype(float)})
+      .set_index('Kommun')
+)
+arbetsloshet.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Öppen arbetslöshet (Arbetsförmedlingen), 2015, procent&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;4.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;5.5&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;9.3&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;number-of-crimes-per-100k-inhabitants&quot;&gt;Number of crimes per 100k inhabitants&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;brott = (pd.read_csv(&quot;brott_per_1000.txt&quot;, sep=&quot;;&quot;, encoding=&quot;latin-1&quot;)
+        .rename(columns={&quot;Region&quot;: &quot;Kommun&quot;, &quot;/100 000 inv&quot;: &quot;Brott per 100k inv&quot;})
+        .groupby(&quot;Kommun&quot;)
+        .sum()
+        .reset_index()
+        [['Kommun', 'Brott per 100k inv']]
+        .assign(Kommun= lambda x: x['Kommun'].str.replace(&quot; kommun&quot;, &quot;&quot;))
+        .set_index('Kommun'))
+brott.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Brott per 100k inv&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;8231&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;10511&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;8300&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;violent-crimes&quot;&gt;Violent crimes&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;valdsbrott = (pd.read_csv(&quot;vbrott_per_1000.txt&quot;, sep=&quot;;&quot;, encoding=&quot;latin-1&quot;)
+        .rename(columns={&quot;Region&quot;: &quot;Kommun&quot;, &quot;/100 000 inv&quot;: u&quot;Våldsbrott per 100k inv&quot;})
+        .groupby(&quot;Kommun&quot;)
+        .sum()
+        .reset_index()
+        [['Kommun', u'Våldsbrott per 100k inv']]
+        .assign(Kommun= lambda x: x['Kommun'].str.replace(&quot; kommun&quot;, &quot;&quot;))
+        .set_index('Kommun'))
+valdsbrott.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Våldsbrott per 100k inv&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;823&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;870&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;967&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;drug-crimes&quot;&gt;Drug crimes&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;knarkbrott = (pd.read_csv(&quot;knarkbrott_per_1000.txt&quot;, sep=&quot;;&quot;, encoding=&quot;latin-1&quot;)
+        .rename(columns={&quot;Region&quot;: &quot;Kommun&quot;, &quot;/100 000 inv&quot;: u&quot;Narkotikabrott per 100k inv&quot;})
+        .groupby(&quot;Kommun&quot;)
+        .sum()
+        .reset_index()
+        [['Kommun', u'Narkotikabrott per 100k inv']]
+        .assign(Kommun= lambda x: x['Kommun'].str.replace(&quot; kommun&quot;, &quot;&quot;))
+        .set_index('Kommun'))
+knarkbrott.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Narkotikabrott per 100k inv&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;402&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;1487&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;327&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;mean-age&quot;&gt;Mean age&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;url = 'http://www.ekonomifakta.se/Fakta/Regional-statistik/Din-kommun-i-siffror/Nyckeltal-for-regioner/?var=17247'
+col = u'Medelålder, 2015, år'
+medianalder = (
+    pd.read_html(url, thousands=' ')[0]
+      .assign(**{col: lambda x: x[col].str.replace(u&quot;,&quot;, u&quot;.&quot;).astype(float)})
+      .set_index('Kommun')
+)
+medianalder.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Medelålder, 2015, år&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;39.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;42.0&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;42.1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;percent-born-in-another-country-than-sweden&quot;&gt;Percent born in another country than Sweden&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;utrikesfodda = (pd.read_excel(&quot;BE0101-Utrikes-fodda-kom-fland.xlsx&quot;, header=5)
+        .dropna(subset=[u'Kommun'])
+        .assign(procent= lambda x: x[u'I procent'].astype(float))
+        .rename(columns={'procent': u'Procent utrikesfödda'})
+        [['Kommun', u'Procent utrikesfödda']]
+        .set_index('Kommun')
+)
+utrikesfodda.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Procent utrikesfödda&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Botkyrka&lt;/th&gt;
+      &lt;td&gt;40.1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Danderyd&lt;/th&gt;
+      &lt;td&gt;15.3&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ekerö&lt;/th&gt;
+      &lt;td&gt;11.0&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;percent-mothers-smoking-while-pregnant&quot;&gt;Percent mothers smoking while pregnant&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;rokande_grav = (
+    pd.read_excel(&quot;Lev03.xlsx&quot;, header=3)
+      .reset_index()
+      .rename(columns={'index': 'Kommun', '2014': u'Rökande gravida, procent'})
+      .assign(Kommun=lambda x: x['Kommun'].str.split())
+      .assign(Kommun=lambda x: x['Kommun'].str[1:])
+      .assign(Kommun=lambda x: x['Kommun'].str.join(&quot; &quot;))
+      .dropna()
+      .set_index('Kommun')
+      .replace(&quot;..&quot;, 0)
+      .assign(**{u'Rökande gravida, procent': lambda x: x[u'Rökande gravida, procent'].astype(float)})
+)
+rokande_grav.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Rökande gravida, procent&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Upplands Väsby&lt;/th&gt;
+      &lt;td&gt;3.6&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Vallentuna&lt;/th&gt;
+      &lt;td&gt;2.3&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Österåker&lt;/th&gt;
+      &lt;td&gt;2.9&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;rapes-per-10k-inhabitants&quot;&gt;Rapes per 10k inhabitants&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;valdtakter = (
+    pd.read_excel(&quot;Sex03.xlsx&quot;, header=3)
+      .reset_index()
+      .rename(columns={'index': 'Kommun', '2015': u'Våldtäkter per 10k inv'})
+      .assign(Kommun=lambda x: x['Kommun'].str.split())
+      .assign(Kommun=lambda x: x['Kommun'].str[1:])
+      .assign(Kommun=lambda x: x['Kommun'].str.join(&quot; &quot;))
+      .dropna()
+      .set_index('Kommun')
+      .assign(**{u'Våldtäkter per 10k inv': lambda x: x[u'Våldtäkter per 10k inv'].astype(float)})
+)
+valdtakter.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Våldtäkter per 10k inv&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Upplands Väsby&lt;/th&gt;
+      &lt;td&gt;5.0&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Vallentuna&lt;/th&gt;
+      &lt;td&gt;1.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Österåker&lt;/th&gt;
+      &lt;td&gt;2.2&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;asylum-seekers-per-1k-inhabitants&quot;&gt;Asylum seekers per 1k inhabitants&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;asylsokande = (pd.read_excel(&quot;asylsdochm.xlsx&quot;, header=1)
+        .dropna(subset=[u'Kommun'])
+        .rename(columns={u'Antal asylsökande per': u'Antal asylsökande per 1000 invånare'})
+        [['Kommun', u'Antal asylsökande per 1000 invånare']]
+        .set_index('Kommun')
+        .assign(**{u'Antal asylsökande per 1000 invånare': lambda x: x[u'Antal asylsökande per 1000 invånare'].astype(float)})
+
+)
+asylsokande.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Antal asylsökande per 1000 invånare&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ljusnarsberg&lt;/th&gt;
+      &lt;td&gt;138.26&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Norberg&lt;/th&gt;
+      &lt;td&gt;113.94&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Hultsfred&lt;/th&gt;
+      &lt;td&gt;78.33&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;types-of-vehicles&quot;&gt;Types of vehicles&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;fordon = (pd.read_excel(&quot;Fordon_lan_och_kommuner_2015.xlsx&quot;, header=5, sheetname=2)
+        .dropna(subset=[u'Kommun'])
+        .set_index('Kommun')
+        .drop(['Kommun-', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6'], axis=1)
+        .apply(lambda x: x.astype(float))
+        .apply(lambda x: x/sum(x), axis=1) # Convert to percentages
+        .dropna()
+        .rename(index=lambda x: x.strip())
+        .rename(columns=lambda x: x.strip())
+        .rename(columns=lambda x: x + &quot;, 2015, procent&quot;)
+
+)
+fordon.head(3)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Personbilar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Lastbilar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Bussar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Motorcyklar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Mopeder, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Traktorer, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Snöskotrar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Terränghjulingar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Terrängskotrar1), 2015, procent&lt;/th&gt;
+      &lt;th&gt;Släpvagnar, 2015, procent&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Upplands Väsby&lt;/th&gt;
+      &lt;td&gt;0.757944&lt;/td&gt;
+      &lt;td&gt;0.069553&lt;/td&gt;
+      &lt;td&gt;0.000088&lt;/td&gt;
+      &lt;td&gt;0.042546&lt;/td&gt;
+      &lt;td&gt;0.009148&lt;/td&gt;
+      &lt;td&gt;0.007748&lt;/td&gt;
+      &lt;td&gt;0.006128&lt;/td&gt;
+      &lt;td&gt;0.005077&lt;/td&gt;
+      &lt;td&gt;0.000175&lt;/td&gt;
+      &lt;td&gt;0.101593&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Vallentuna&lt;/th&gt;
+      &lt;td&gt;0.672324&lt;/td&gt;
+      &lt;td&gt;0.066290&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.051673&lt;/td&gt;
+      &lt;td&gt;0.009153&lt;/td&gt;
+      &lt;td&gt;0.029813&lt;/td&gt;
+      &lt;td&gt;0.008131&lt;/td&gt;
+      &lt;td&gt;0.021327&lt;/td&gt;
+      &lt;td&gt;0.000489&lt;/td&gt;
+      &lt;td&gt;0.140801&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Österåker&lt;/th&gt;
+      &lt;td&gt;0.692083&lt;/td&gt;
+      &lt;td&gt;0.069446&lt;/td&gt;
+      &lt;td&gt;0.000252&lt;/td&gt;
+      &lt;td&gt;0.047521&lt;/td&gt;
+      &lt;td&gt;0.013716&lt;/td&gt;
+      &lt;td&gt;0.015516&lt;/td&gt;
+      &lt;td&gt;0.009396&lt;/td&gt;
+      &lt;td&gt;0.010332&lt;/td&gt;
+      &lt;td&gt;0.000252&lt;/td&gt;
+      &lt;td&gt;0.141484&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Since we now have every KPI as a DataFrame, let’s put them together with &lt;code&gt;concat&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;concat = pd.concat([
+        votes,
+        utrikesfodda,
+        medianalder, 
+        brott, 
+        medianinkomst, 
+        arbetsloshet, 
+        fortidspensionarer, 
+        hogskoleutbildning, 
+        befolkningsokning,
+        foretagsklimat, 
+        valdsbrott,
+        knarkbrott,
+        asylsokande,
+        fordon,
+        valdtakter,
+        rokande_grav,
+    ], 
+    axis=1,
+    join='inner')
+concat.head(5)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;SD&lt;/th&gt;
+      &lt;th&gt;M&lt;/th&gt;
+      &lt;th&gt;C&lt;/th&gt;
+      &lt;th&gt;FP&lt;/th&gt;
+      &lt;th&gt;KD&lt;/th&gt;
+      &lt;th&gt;S&lt;/th&gt;
+      &lt;th&gt;V&lt;/th&gt;
+      &lt;th&gt;MP&lt;/th&gt;
+      &lt;th&gt;FI&lt;/th&gt;
+      &lt;th&gt;ÖVR&lt;/th&gt;
+      &lt;th&gt;...&lt;/th&gt;
+      &lt;th&gt;Bussar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Motorcyklar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Mopeder, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Traktorer, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Snöskotrar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Terränghjulingar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Terrängskotrar1), 2015, procent&lt;/th&gt;
+      &lt;th&gt;Släpvagnar, 2015, procent&lt;/th&gt;
+      &lt;th&gt;Våldtäkter per 10k inv&lt;/th&gt;
+      &lt;th&gt;Rökande gravida, procent&lt;/th&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Kommun&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Ale&lt;/th&gt;
+      &lt;td&gt;10.64&lt;/td&gt;
+      &lt;td&gt;21.08&lt;/td&gt;
+      &lt;td&gt;4.95&lt;/td&gt;
+      &lt;td&gt;3.28&lt;/td&gt;
+      &lt;td&gt;3.50&lt;/td&gt;
+      &lt;td&gt;33.59&lt;/td&gt;
+      &lt;td&gt;6.25&lt;/td&gt;
+      &lt;td&gt;5.70&lt;/td&gt;
+      &lt;td&gt;0.18&lt;/td&gt;
+      &lt;td&gt;10.83&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;0.000141&lt;/td&gt;
+      &lt;td&gt;0.054257&lt;/td&gt;
+      &lt;td&gt;0.016427&lt;/td&gt;
+      &lt;td&gt;0.039285&lt;/td&gt;
+      &lt;td&gt;0.002159&lt;/td&gt;
+      &lt;td&gt;0.009058&lt;/td&gt;
+      &lt;td&gt;0.000188&lt;/td&gt;
+      &lt;td&gt;0.150005&lt;/td&gt;
+      &lt;td&gt;2.1&lt;/td&gt;
+      &lt;td&gt;4.4&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alingsås&lt;/th&gt;
+      &lt;td&gt;7.48&lt;/td&gt;
+      &lt;td&gt;21.58&lt;/td&gt;
+      &lt;td&gt;6.17&lt;/td&gt;
+      &lt;td&gt;10.30&lt;/td&gt;
+      &lt;td&gt;6.44&lt;/td&gt;
+      &lt;td&gt;29.19&lt;/td&gt;
+      &lt;td&gt;6.85&lt;/td&gt;
+      &lt;td&gt;10.81&lt;/td&gt;
+      &lt;td&gt;0.30&lt;/td&gt;
+      &lt;td&gt;0.89&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;0.000068&lt;/td&gt;
+      &lt;td&gt;0.052143&lt;/td&gt;
+      &lt;td&gt;0.009086&lt;/td&gt;
+      &lt;td&gt;0.053940&lt;/td&gt;
+      &lt;td&gt;0.001729&lt;/td&gt;
+      &lt;td&gt;0.014883&lt;/td&gt;
+      &lt;td&gt;0.000203&lt;/td&gt;
+      &lt;td&gt;0.154902&lt;/td&gt;
+      &lt;td&gt;4.8&lt;/td&gt;
+      &lt;td&gt;3.8&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Alvesta&lt;/th&gt;
+      &lt;td&gt;14.44&lt;/td&gt;
+      &lt;td&gt;19.70&lt;/td&gt;
+      &lt;td&gt;14.89&lt;/td&gt;
+      &lt;td&gt;1.74&lt;/td&gt;
+      &lt;td&gt;3.12&lt;/td&gt;
+      &lt;td&gt;28.77&lt;/td&gt;
+      &lt;td&gt;4.08&lt;/td&gt;
+      &lt;td&gt;3.49&lt;/td&gt;
+      &lt;td&gt;0.20&lt;/td&gt;
+      &lt;td&gt;9.56&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;0.002950&lt;/td&gt;
+      &lt;td&gt;0.042747&lt;/td&gt;
+      &lt;td&gt;0.014082&lt;/td&gt;
+      &lt;td&gt;0.082378&lt;/td&gt;
+      &lt;td&gt;0.000946&lt;/td&gt;
+      &lt;td&gt;0.015418&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.182122&lt;/td&gt;
+      &lt;td&gt;2.0&lt;/td&gt;
+      &lt;td&gt;4.8&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Aneby&lt;/th&gt;
+      &lt;td&gt;9.38&lt;/td&gt;
+      &lt;td&gt;11.19&lt;/td&gt;
+      &lt;td&gt;20.46&lt;/td&gt;
+      &lt;td&gt;4.06&lt;/td&gt;
+      &lt;td&gt;14.82&lt;/td&gt;
+      &lt;td&gt;31.30&lt;/td&gt;
+      &lt;td&gt;2.19&lt;/td&gt;
+      &lt;td&gt;5.75&lt;/td&gt;
+      &lt;td&gt;0.05&lt;/td&gt;
+      &lt;td&gt;0.80&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;0.003179&lt;/td&gt;
+      &lt;td&gt;0.042438&lt;/td&gt;
+      &lt;td&gt;0.011197&lt;/td&gt;
+      &lt;td&gt;0.119712&lt;/td&gt;
+      &lt;td&gt;0.000968&lt;/td&gt;
+      &lt;td&gt;0.017556&lt;/td&gt;
+      &lt;td&gt;0.000000&lt;/td&gt;
+      &lt;td&gt;0.199198&lt;/td&gt;
+      &lt;td&gt;1.5&lt;/td&gt;
+      &lt;td&gt;0.0&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Arboga&lt;/th&gt;
+      &lt;td&gt;9.75&lt;/td&gt;
+      &lt;td&gt;20.54&lt;/td&gt;
+      &lt;td&gt;5.53&lt;/td&gt;
+      &lt;td&gt;7.57&lt;/td&gt;
+      &lt;td&gt;4.08&lt;/td&gt;
+      &lt;td&gt;39.04&lt;/td&gt;
+      &lt;td&gt;5.77&lt;/td&gt;
+      &lt;td&gt;5.62&lt;/td&gt;
+      &lt;td&gt;0.14&lt;/td&gt;
+      &lt;td&gt;1.96&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;0.001810&lt;/td&gt;
+      &lt;td&gt;0.043954&lt;/td&gt;
+      &lt;td&gt;0.010256&lt;/td&gt;
+      &lt;td&gt;0.060502&lt;/td&gt;
+      &lt;td&gt;0.006722&lt;/td&gt;
+      &lt;td&gt;0.009997&lt;/td&gt;
+      &lt;td&gt;0.000172&lt;/td&gt;
+      &lt;td&gt;0.170818&lt;/td&gt;
+      &lt;td&gt;2.2&lt;/td&gt;
+      &lt;td&gt;13.2&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;5 rows × 35 columns&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Pandas gives us the method &lt;code&gt;corr&lt;/code&gt; that by default uses Persons &lt;code&gt;r&lt;/code&gt; to show correlations between columns. Let’s start of by using this simple frequentistic approach.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;corr_matrix = concat.corr()
+corr = concat.corr()
+
+# Keep only parties as columns
+corr = corr.loc[:, corr.columns.isin(partier)] 
+# Keep only KPIs as rows
+corr = corr[~corr.index.isin(partier)]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And use Seaborn:s &lt;code&gt;heatmap&lt;/code&gt; to give us a nice visual representation of the correlation table.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;fig1 = plt.figure(figsize=(8, 8))
+ax = sns.heatmap(
+    corr, 
+    annot=True, fmt='.1f', linewidths=.5
+)
+
+ax.text(-1., 1.141, 
+        u'Korrelation med andel riksdagsröster',
+        verticalalignment='bottom', horizontalalignment='left',
+        transform=ax.transAxes,
+        color='#000000', fontsize=14)
+
+ax.text(-1., -0.181, 
+        u'Källa: BRÅ/SCB/Val.se/Ekonomifakta.se – Korrelationen är på kommunnivå och Pearson-korr har använts',
+        verticalalignment='bottom', horizontalalignment='left',
+        transform=ax.transAxes,
+        color='#666666', fontsize=8)
+
+plt.savefig('SD_korr.pdf', bbox_inches='tight')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/SD-korr_41_0.png&quot; style=&quot;max-width: 300%!important;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;First of, a Persons &lt;code&gt;r&lt;/code&gt; correlation ranges from 0 to 1. Zero meaning no correlation and one full correlation. Depending on textbook, somewhere over 0.4 will be a correlation to take seriously. But let’s get back to that in a moment.&lt;/p&gt;
+
+&lt;p&gt;Some interesting correlations are though:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;The right-wing populist party the Sweden Democrats (SD in the figure)
+    &lt;ul&gt;
+      &lt;li&gt;Correlations with municipailtys having large porportions &lt;strong&gt;motorcycles&lt;/strong&gt;,&lt;/li&gt;
+      &lt;li&gt;and women &lt;strong&gt;smoking while pregnant&lt;/strong&gt;.&lt;/li&gt;
+      &lt;li&gt;Also high unemployment rate shows some correlation.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Right wing Moderaterna (M)
+    &lt;ul&gt;
+      &lt;li&gt;High percentage mopeds&lt;/li&gt;
+      &lt;li&gt;High percentage cars&lt;/li&gt;
+      &lt;li&gt;High education&lt;/li&gt;
+      &lt;li&gt;High income&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;The Greens Miljöpartiet (MP)
+    &lt;ul&gt;
+      &lt;li&gt;Pretty much the same as Moderaterna. Only not that high income.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;Centerpartiet (C) historically a party for the farmers
+    &lt;ul&gt;
+      &lt;li&gt;High correlation with tractors&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;So let’s go into detail what a correlation of 0.5 actually is. Is it a fully linear correlation between smoking while pregnant and votage on xenophobic parties? Let’s plot the municipalitys with these KPI:s on the axis.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def corrplot_SD(kpi):
+    (concat.replace(0, np.nan).dropna()
+           .plot(kind='scatter', 
+                 x=kpi, 
+                 y=u'SD'))
+
+corrplot_SD(u'Rökande gravida, procent')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/SD-korr_44_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;If you ask me, that looks like a correlation. But that’s also what I want to see since the Sweden Democrats is pretty much as far away from my personal political opinions you can go. I’d pretty much take any chance to misscredit them. So let’s go further down the rabbit hole, but first plot the other KPIs.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;corrplot_SD(u'Motorcyklar, 2015, procent')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/SD-korr_46_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;corrplot_SD(u'Öppen arbetslöshet (Arbetsförmedlingen), 2015, procent')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/SD-korr_47_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;We are now going to calculate the &lt;code&gt;r&lt;/code&gt; coefficient in a Bayesian fashion with Monte Carlo Markov Chains (MCMC). That will give us a distribution over &lt;code&gt;r&lt;/code&gt; instead of a single number which allows us to give a upper and lower bound of the correlation. This closely follows the method described by &lt;a href=&quot;http://www.philippsinger.info/?p=581&quot;&gt;Philipp Singer here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;You should read his blog post if you want more details. And in more general, Monte Carlo simulations is a really appealing way to solve problems. Whenever I get the chance, I recommend &lt;a href=&quot;https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers&quot;&gt;Bayesian methods for hackers&lt;/a&gt;. The topics covered there should really be in any data scientist tool belt.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import pymc as pymc
+from pymc import Normal, Uniform, MvNormal, Exponential
+from numpy.linalg import inv, det
+from numpy import log, pi, dot
+import numpy as np
+from scipy.special import gammaln
+
+def _model(data):
+    mu = Normal('mu', 0, 0.000001, size=2)
+    sigma = Uniform('sigma', 0, 1000, size=2)
+    rho = Uniform('r', -1, 1)
+    
+    @pymc.deterministic
+    def precision(sigma=sigma, rho=rho):
+        ss1 = float(sigma[0] * sigma[0])
+        ss2 = float(sigma[1] * sigma[1])
+        rss = float(rho * sigma[0] * sigma[1])
+        return inv(np.mat([[ss1, rss], 
+                           [rss, ss2]]))
+    
+    mult_n = MvNormal('mult_n', mu=mu, tau=precision, value=data.T, observed=True)
+    
+    return locals()
+    
+def analyze(kpi):
+    freq_corr = corr.loc[kpi, 'SD']
+    print &quot;Standard Persons r correlations gave {}&quot;.format(freq_corr)
+    data = np.array([concat['SD'].values, concat[kpi].values])
+    model = pymc.MCMC(_model(data)) 
+    model.sample(10000, 5000) 
+    
+    print &quot;\nMCMC gives an lower and upper bound for this of {} and {}&quot;.format(
+        *model.stats()['r']['95% HPD interval']
+    )
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;analyze(u'Rökande gravida, procent')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;Standard Persons r correlations gave 0.483367702644
+ [-----------------100%-----------------] 10000 of 10000 complete in 25.1 sec
+MCMC gives an lower and upper bound for this of 0.384673816867 and 0.569554905111
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This tells us that the correlation is statistically sound. No &lt;code&gt;p&lt;/code&gt;-values, just a interval that the true &lt;code&gt;r&lt;/code&gt; should be in with 95 % probability. Even if it’s &lt;em&gt;just&lt;/em&gt; the lower bound 0.38 it’s a correlation worth mentioning. But of course, it does not tell us if &lt;strong&gt;correlation imply causation&lt;/strong&gt;.&lt;/p&gt;
+
+</description>
+        <pubDate>Mon, 15 Aug 2016 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2016/08/15/SD/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/08/15/SD/</guid>
+        
+        <category>python,</category>
+        
+        <category>SD,</category>
+        
+        <category>bayes</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Mapping town names atomic parts in Sweden</title>
+        <description>&lt;p&gt;Many towns in Sweden share the same atomic parts in their names. &lt;code&gt;-hult&lt;/code&gt; is common in Småland &lt;code&gt;-arp&lt;/code&gt; is common in Skåne. I got curious of how they cluster geographically. Let’s load up a &lt;code&gt;DataFrame&lt;/code&gt; with the &lt;a href=&quot;/assets/swe_towns_latlon.csv&quot;&gt;positions of Swedish towns&lt;/a&gt; that I made by querying Google for the position of every Swedish town I could find on Wikipedia.&lt;/p&gt;
+
+&lt;p&gt;This notebook is also available as a &lt;a href=&quot;https://gist.github.com/maxberggren/ccc0c9c3efd4b166ebbe4be9a4e54882&quot;&gt;Jupyter Notebook here&lt;/a&gt; if you want to execute the code yourself.&lt;/p&gt;
+
+&lt;p&gt;Scroll past the code if you’re only here for the maps.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;import pandas as pd
+
+df = pd.read_csv('swe_towns_latlon.csv', encoding='utf-8')
+df['town'] = df['town'].str.lower()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And then do some crappy character n-gram extractions.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;def find_features(s):
+    feats = [s[i:i+7] for i in xrange(len(s)-6)] 
+    feats += [s[i:i+6] for i in xrange(len(s)-5)] 
+    feats += [s[i:i+5] for i in xrange(len(s)-4)] 
+    feats += [s[i:i+4] for i in xrange(len(s)-3)] 
+    feats += [s[i:i+3] for i in xrange(len(s)-2)] 
+    return feats
+
+features = []
+for town in df['town'].values:
+    features.extend(find_features(town))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;To be able to count the occurances.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;features = list(set(features))
+final_features = []
+occurances = []
+
+for feature in features:
+    try:
+        occurances.append(sum(df['town'].str.contains(feature)))
+        final_features.append(feature)
+    except:
+        pass
+    
+df_features = pd.DataFrame({
+    'feature': final_features, 
+    'occurances': occurances 
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So now we get interesting parts of town names. Sanity check (at least if you’re Swedish) is that &lt;code&gt;sta&lt;/code&gt;, &lt;code&gt;hult&lt;/code&gt; and so on are present.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;print &quot;, &quot;.join(df_features.sort('occurances', ascending=False).head(100)['feature'].values)
+
+sta, tor, ing, erg, nge, orp,  oc,  och , och , och, ch ,  och, vik, torp, ra , ber, ors, berg, und, sjö, tra, and, str, näs, ter, inge, stra, tad, stad, den, for, fors, mar, ken, sto, olm, ste, äst, storp, stor, lla, lle, all, dal, hol, ngs, holm, äll, lst, tra , ång, ers, orr, stra , red, ran, nda, arp, ham, ill, est, ung, äck, ten, ster, gen, jör, rby, jär, nne, cke, ult, amm, mma, lin, sun, ryd, ack, sby, äng, eby, byn, len, lan, sund, ling, ker, nna, mmar, löv, lun, ike, bäck, bro, tan, nga, bäc, ård, rst, tte
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I went ahead and took out the ones I deemed interesting. Now let’s plot them to se how they group geographically.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
+rcParams['font.family'] = 'sans-serif'
+rcParams['font.sans-serif'] = ['Helvetica Neue']
+%matplotlib inline
+
+def plot(data, mult=0.9):
+    &quot;&quot;&quot; Take data with 'part-of-towns-name' and color and plot it. Use `mult` for easy scaling of plot &quot;&quot;&quot;
+    
+    def get_coordinates(townpart):
+        try:
+            townpart = townpart.decode('utf-8')
+        except:
+            pass
+        return df[df['town'].str.contains(townpart)]['lat'].values, df[df['town'].str.contains(townpart)]['lon'].values
+
+    fig = plt.figure(figsize=(20*mult, 16*mult), dpi=200)
+
+    m = Basemap(
+        projection='merc',
+        resolution='i', 
+        area_thresh=250,
+        llcrnrlon=9.5, 
+        llcrnrlat=54.5,
+        urcrnrlon=24.5, 
+        urcrnrlat=69.5
+    ) 
+
+    m.drawcoastlines(linewidth=0, color=&quot;#000000&quot;) 
+    m.drawcountries()
+    m.drawstates()
+    m.drawmapboundary()
+    m.fillcontinents(color='black', lake_color='white', zorder=0)
+    m.drawmapboundary(fill_color='white')
+    title = plt.title(u'Town names containing:', fontsize=16*mult) 
+    title.set_y(1.01) 
+
+    for townpart in data.keys():
+        lats, lons = get_coordinates(townpart)
+        x, y = m(lons, lats)
+        m.scatter(x, y, marker='o', s=30*mult, alpha=1, label=townpart, edgecolors='none', c=data[townpart])
+
+    plt.legend(loc=2, fontsize=16*mult)
+    plt.show()
+
+
+plot({
+    'arp': '#00ff00',
+    'holm': '#ff0000',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_10_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    'sta': '#ff00ff',
+    'ing': '#00ffff',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_11_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    'hult': '#ffff00',
+    'fors': '#00ff00',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_12_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    'vik': '#4f96c5',
+    'torp': '#00ff00',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_13_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    u'näs': '#b15928',
+    'ryd': '#08a060',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_14_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    'tuna': '#33cc33',
+    'hammar': '#ff0066',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    u'köping': '#cc99ff',
+    u'bruk': '#ffff00',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_16_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    'stor': '#00ccff',
+    'sund': '#e3c471',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_17_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    'stad': '#ffcc00',
+    'berg': '#9933ff',
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_18_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;code&gt;Berg&lt;/code&gt; is really common in the old mining regions called Bergslagen.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;plot({
+    u'ån': '#ffccff',
+    u'ås': '#ee5657'
+})
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/towns-atomic-parts_20_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+</description>
+        <pubDate>Thu, 14 Jul 2016 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/</guid>
+        
+        <category>python,</category>
+        
+        <category>maps,</category>
+        
+        <category>townnames</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Introducing Shamebot3</title>
+        <description>&lt;p&gt;How we perceive our world is surely influenced by what kind of people we let represent it. Lead roles in movies is mainly held by men (at least in the top #100 imdb movies). That sets the stage for a world where men are perceived as in the lead role. This is perhaps not news, but quantifying this inequality might be a step in the direction of correcting it.&lt;/p&gt;
+
+&lt;p&gt;Therefore I built a &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;bot&lt;/a&gt; that:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Daily scans the major Swedish news sites for names of the form &lt;code&gt;Firstname Surname&lt;/code&gt;.&lt;/li&gt;
+  &lt;li&gt;Checks every firstname against Sweden Statistics (&lt;a href=&quot;http://www.scb.se/&quot;&gt;SCB&lt;/a&gt;) name database, counting every name used by more than 95 % of exclusivly one gender. Unisex names are therefore excluded.&lt;/li&gt;
+  &lt;li&gt;Calculates the percentage of women represented by each site and logs it in a timeseries.&lt;/li&gt;
+  &lt;li&gt;Tweets once every week and month with a graph ranking the Swedish news sites.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;It looks something like this.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/shamebot.png&quot; alt=&quot;graph of percentage women represented in Swedish news media&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;So basically it shames the least equal newspaper, hoping for retweets to add on to the feel of a angry online mob. In this analogy, twitter is the public shame pole of the village.&lt;/p&gt;
+
+&lt;p&gt;The timeseries shows some general trends already, even though the bot was broken for some time (as you can see from the graph).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/timeseries.png&quot; alt=&quot;timeseries&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Etc.se which is a left wing newspaper works activily with equal representation in their texts and it obviously reflects on the data. Most other newspapers lies in the span 20 % - 35 % women represented. Svt.se which is the Swedish public service, that is funded by tax money (black line), comes out second.&lt;/p&gt;
+
+&lt;p&gt;When more data is avalible I will probably revisit this again.&lt;/p&gt;
+
+&lt;p&gt;Code for the bot can be found on my &lt;a href=&quot;https://github.com/maxberggren/shamebot&quot;&gt;Github&lt;/a&gt; and the twitter account connected with it is &lt;a href=&quot;https://twitter.com/shamebot3&quot;&gt;Shamebot3&lt;/a&gt; (shamebot one and two was already taken).&lt;/p&gt;
+</description>
+        <pubDate>Wed, 05 Aug 2015 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2015/08/05/shamebot/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/08/05/shamebot/</guid>
+        
+        <category>python,</category>
+        
+        <category>equality,</category>
+        
+        <category>shamebot</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Working with maps in Python</title>
+        <description>&lt;p&gt;Kristoffer over at &lt;a href=&quot;http://rpsychologist.com&quot;&gt;rpsychologist.com&lt;/a&gt; wrote a &lt;a href=&quot;http://rpsychologist.com/working-with-shapefiles-projections-and-world-maps-in-ggplot&quot;&gt;really nice tutorial&lt;/a&gt; on getting up to speed with maps in R. It looked something like this.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_9_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an &lt;a href=&quot;https://gist.github.com/maxberggren/45904cab7550ba73fa03/5e698a92c9b538ab3fbcb85c6092af06e34bcc76&quot;&gt;Jupyter Notebook&lt;/a&gt; that you can download and run on our local machine.&lt;/p&gt;
+
+&lt;p&gt;To start with you need the packages &lt;code&gt;numpy&lt;/code&gt; and &lt;code&gt;matplotlib basemap&lt;/code&gt;. The latter should only be installed through &lt;a href=&quot;http://continuum.io/downloads&quot;&gt;Anaconda&lt;/a&gt; which is your, from here on, favorite Python package installer. So let’s load them up.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+from mpl_toolkits.basemap import Basemap
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (&lt;code&gt;kav7&lt;/code&gt;), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;m = Basemap(resolution='c',
+            projection='kav7',
+            lat_0=0., # Center around
+            lon_0=0.) # lat 0, lon 0
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Kristoffer used graticlues (the grid) from a shapefile, &lt;code&gt;Basemap&lt;/code&gt; handles this for us so let’s prepare what it need.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;n_graticules = 18
+parallels = np.arange(-80., 90, n_graticules)
+meridians = np.arange(0., 360., n_graticules)
+lw = 1
+dashes = [5,7] # 5 dots, 7 spaces... repeat
+graticules_color = 'grey'
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The rest should be quite self explainatory.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;fig1 = plt.figure(figsize=(16,20))
+fig1.patch.set_facecolor('#e6e8ec')
+ax = fig1.add_axes([0.1,0.1,0.8,0.8])
+
+m.drawmapboundary(color='white', 
+                  linewidth=0.0, 
+                  fill_color='white')
+m.drawparallels(parallels, 
+                linewidth=lw, 
+                dashes=dashes, 
+                color=graticules_color)
+m.drawmeridians(meridians, 
+                linewidth=lw, 
+                dashes=dashes, 
+                color=graticules_color)
+m.drawcoastlines(linewidth=0)
+m.fillcontinents('black', 
+                 lake_color='white')
+m.drawcountries(linewidth=1, 
+                linestyle='solid', 
+                color='white', 
+                zorder=30)
+
+title = plt.title('World map (Kavrayskiy 7)', 
+                  fontsize=20) 
+title.set_y(1.03) # Move the title a bit for niceness
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_7_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Let’s add some shapefiles. Basemap does this nicely for us with &lt;code&gt;readshapefile&lt;/code&gt; and we use the same as Kristoffer found &lt;a href=&quot;http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/&quot;&gt;here&lt;/a&gt;. Since we named it &lt;code&gt;populated_places&lt;/code&gt;, &lt;code&gt;m.populated_places_info&lt;/code&gt; will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check &lt;code&gt;m.yourname_info&lt;/code&gt; out.&lt;/p&gt;
+
+&lt;p&gt;We use &lt;code&gt;m.scatter&lt;/code&gt; to make the bubble plot.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;m.readshapefile('shapefiles/ne_110m_populated_places/ne_110m_populated_places', 
+                name='populated_places', 
+                drawbounds=False, 
+                color='none')
+
+populations = [r['POP2000'] for r in m.populated_places_info]
+lats = [r['LATITUDE'] for r in m.populated_places_info]
+lons = [r['LONGITUDE'] for r in m.populated_places_info]
+x1, y1 = m(lons, lats) # Convert coords to projected place in figure
+m.scatter(x1, y1, 
+          s=np.array(populations)*0.05, 
+          marker=&quot;o&quot;, 
+          color='#32caf6',
+          zorder=10, 
+          alpha=0.8)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_9_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But most likely a shapefile will contain a shape that you want to put on your map. Let’s put out the borders of the tectonic plates on our map. The tectonic plate shapefile can be found &lt;a href=&quot;https://github.com/fraxen/tectonicplates&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;m.readshapefile('shapefiles/tectonicplates-master/PB2002_plates', 
+                name='tectonic_plates', 
+                drawbounds=True, 
+                color='red')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_11_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;But you’ll probably also want to have control over the settings of the shapes e.g. color the Australia plate in a different way&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;for info, shape in zip(m.tectonic_plates_info, 
+                       m.tectonic_plates):
+
+    if info['PlateName'] == &quot;Australia&quot;:
+        x, y = zip(*shape) 
+        m.plot(x, y, marker=None, color='b')
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_13_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;And perhaps you also want to fill the patch.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import PathPatch
+        
+patches = []
+for info, shape in zip(m.tectonic_plates_info, 
+                       m.tectonic_plates):
+
+    if info['PlateName'] == &quot;Australia&quot;:
+        patches.append(Polygon(np.array(shape), True))
+        
+ax.add_collection(PatchCollection(patches, 
+                                  facecolor='#32caf6', 
+                                  edgecolor='none', 
+                                  linewidths=1., 
+                                  alpha=0.5,
+                                  zorder=1))
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/tutorial_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+</description>
+        <pubDate>Tue, 04 Aug 2015 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2015/08/04/basemap/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/08/04/basemap/</guid>
+        
+        <category>maps,</category>
+        
+        <category>python,</category>
+        
+        <category>matplotlib,</category>
+        
+        <category>basemap</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Wisper Game with code and a translation service</title>
+        <description>&lt;p&gt;At least in Sweden there was this game where you sat in a ring of kids, one thought of a sentence which he/she wispered to the next kid, who passed it along and so on… Until the message reached its sender again. Usually the message was completely cray cray by then.&lt;/p&gt;
+
+&lt;p&gt;This made me think about what kind of information is beeing lost when an translation is made between languages. Surely the translator puts its touch on it and maybe also cultural differences will be reflected in the translation.&lt;/p&gt;
+
+&lt;p&gt;So I built a small abstraction on top of the machine translation service Gengo.com which helped me try this out. I could now specify a &lt;code&gt;Route&lt;/code&gt; like &lt;code&gt;['en', 'ko', 'en']&lt;/code&gt;, making it take an English text, send it to the service for translation into Korean, and then from Korean back to English.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;t = u&quot;&quot;&quot; When we tackle obstacles, we find hidden reserves of courage 
+         and resilience we did not know we had. And it is only when we are 
+         faced with failure do we realise that these resources were always 
+         there within us. We only need to find them and move on with our lives. &quot;&quot;&quot;
+           
+r = Route(['en', 'ko', 'en'], start_text=t)
+r.start()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This gives:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+[ko] 우리가 어려움을 극복하고자 노력할 때, 우리는 전에 알지 못했던 우리 안에 숨겨진 용기와 회복력을 발견하게 된다.
+[en] When we try to overcome the difficulties, we will find out the hidden courage and resilience within us which we did not know before.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The gist of the English sentences are the same, but the word order is completely different. I tried some more languages:&lt;/p&gt;
+
+&lt;h4 id=&quot;english--japanese--english&quot;&gt;English → Japanese → English&lt;/h4&gt;
+
+&lt;pre&gt;&lt;code&gt;r = Route(['en', 'ja', 'en'], start_text=t)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Gives:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+[ja] 問題に直面すると、人は自分が勇敢さや立ち直る力を兼ね備えているということに気が付く。
+[en] When faced with problems, people realize that they possess courage and the strength needed to stand back up. 
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&quot;english--spanish--english&quot;&gt;English → Spanish → English&lt;/h4&gt;
+
+&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+[es] Cuando afrontamos obstáculos, encontramos reservas ocultas de valor y adaptación que no sabíamos que teníamos.
+[en] When we face obstacles, we find hidden resources of courage and adaptation, which we didn't know about.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h4 id=&quot;english--german--english&quot;&gt;English → German → English&lt;/h4&gt;
+
+&lt;pre&gt;&lt;code&gt;[en] When we tackle obstacles, we find hidden reserves of courage and resilience we did not know we had.
+[de] Wenn wir Hindernisse angehen, finden wir versteckte Reserven von Mut und Belastbarkeit, von den wir nicht wussten, dass wir sie hatten.
+[en] If we consider the obstacles we will find hidden reserves of courage and resilience of which we had no idea that we were in possession of.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;So ultimately I would want to make every translation over a couple of hundred translators and pick the most common translation to rule out the individual translators touch. Then you might be able to find exciting insights by taking interesting routes. Maybe around the world? maybe just through Spanish countries or something like that.&lt;/p&gt;
+
+&lt;p&gt;Anyway, my credits ran out which halted my project so let me know if you want to fund me. The &lt;a href=&quot;https://github.com/maxberggren/WorldWisper&quot;&gt;code is on Github&lt;/a&gt; albeit not very well documented or complete.&lt;/p&gt;
+
+</description>
+        <pubDate>Wed, 10 Jun 2015 21:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2015/06/10/wisper-game/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2015/06/10/wisper-game/</guid>
+        
+        <category>graphs</category>
+        
+        
+      </item>
+    
+  </channel>
+</rss>
