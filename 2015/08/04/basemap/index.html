@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://maxberggren.se/2015/08/04/basemap/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
-  
+
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
 
@@ -101,38 +101,35 @@
 
 <p>Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an <a href="https://gist.github.com/maxberggren/45904cab7550ba73fa03/5e698a92c9b538ab3fbcb85c6092af06e34bcc76">Jupyter Notebook</a> that you can download and run on our local machine.</p>
 
-<p>To start with you need the packages <code class="highlighter-rouge">numpy</code> and <code class="highlighter-rouge">matplotlib basemap</code>. The latter should only be installed through <a href="http://continuum.io/downloads">Anaconda</a> which is your, from here on, favorite Python package installer. So let’s load them up.</p>
+<p>To start with you need the packages <code>numpy</code> and <code>matplotlib basemap</code>. The latter should only be installed through <a href="http://continuum.io/downloads">Anaconda</a> which is your, from here on, favorite Python package installer. So let’s load them up.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>import numpy as np
+<pre><code>import numpy as np
 import matplotlib.pyplot as plt
 %matplotlib inline
 from mpl_toolkits.basemap import Basemap
 </code></pre>
-</div>
 
-<p>Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (<code class="highlighter-rouge">kav7</code>), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.</p>
+<p>Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (<code>kav7</code>), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>m = Basemap(resolution='c',
+<pre><code>m = Basemap(resolution='c',
             projection='kav7',
             lat_0=0., # Center around
             lon_0=0.) # lat 0, lon 0
 </code></pre>
-</div>
 
-<p>Kristoffer used graticlues (the grid) from a shapefile, <code class="highlighter-rouge">Basemap</code> handles this for us so let’s prepare what it need.</p>
+<p>Kristoffer used graticlues (the grid) from a shapefile, <code>Basemap</code> handles this for us so let’s prepare what it need.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>n_graticules = 18
+<pre><code>n_graticules = 18
 parallels = np.arange(-80., 90, n_graticules)
 meridians = np.arange(0., 360., n_graticules)
 lw = 1
 dashes = [5,7] # 5 dots, 7 spaces... repeat
 graticules_color = 'grey'
 </code></pre>
-</div>
 
 <p>The rest should be quite self explainatory.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>fig1 = plt.figure(figsize=(16,20))
+<pre><code>fig1 = plt.figure(figsize=(16,20))
 fig1.patch.set_facecolor('#e6e8ec')
 ax = fig1.add_axes([0.1,0.1,0.8,0.8])
 
@@ -159,15 +156,14 @@ title = plt.title('World map (Kavrayskiy 7)',
                   fontsize=20) 
 title.set_y(1.03) # Move the title a bit for niceness
 </code></pre>
-</div>
 
 <p><img src="/assets/tutorial_7_0.png" alt="png" /></p>
 
-<p>Let’s add some shapefiles. Basemap does this nicely for us with <code class="highlighter-rouge">readshapefile</code> and we use the same as Kristoffer found <a href="http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/">here</a>. Since we named it <code class="highlighter-rouge">populated_places</code>, <code class="highlighter-rouge">m.populated_places_info</code> will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check <code class="highlighter-rouge">m.yourname_info</code> out.</p>
+<p>Let’s add some shapefiles. Basemap does this nicely for us with <code>readshapefile</code> and we use the same as Kristoffer found <a href="http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/">here</a>. Since we named it <code>populated_places</code>, <code>m.populated_places_info</code> will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check <code>m.yourname_info</code> out.</p>
 
-<p>We use <code class="highlighter-rouge">m.scatter</code> to make the bubble plot.</p>
+<p>We use <code>m.scatter</code> to make the bubble plot.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>m.readshapefile('shapefiles/ne_110m_populated_places/ne_110m_populated_places', 
+<pre><code>m.readshapefile('shapefiles/ne_110m_populated_places/ne_110m_populated_places', 
                 name='populated_places', 
                 drawbounds=False, 
                 color='none')
@@ -183,37 +179,34 @@ m.scatter(x1, y1,
           zorder=10, 
           alpha=0.8)
 </code></pre>
-</div>
 
 <p><img src="/assets/tutorial_9_0.png" alt="png" /></p>
 
 <p>But most likely a shapefile will contain a shape that you want to put on your map. Let’s put out the borders of the tectonic plates on our map. The tectonic plate shapefile can be found <a href="https://github.com/fraxen/tectonicplates">here</a>.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>m.readshapefile('shapefiles/tectonicplates-master/PB2002_plates', 
+<pre><code>m.readshapefile('shapefiles/tectonicplates-master/PB2002_plates', 
                 name='tectonic_plates', 
                 drawbounds=True, 
                 color='red')
 </code></pre>
-</div>
 
 <p><img src="/assets/tutorial_11_0.png" alt="png" /></p>
 
 <p>But you’ll probably also want to have control over the settings of the shapes e.g. color the Australia plate in a different way</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>for info, shape in zip(m.tectonic_plates_info, 
+<pre><code>for info, shape in zip(m.tectonic_plates_info, 
                        m.tectonic_plates):
 
     if info['PlateName'] == "Australia":
         x, y = zip(*shape) 
         m.plot(x, y, marker=None, color='b')
 </code></pre>
-</div>
 
 <p><img src="/assets/tutorial_13_0.png" alt="png" /></p>
 
 <p>And perhaps you also want to fill the patch.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>from matplotlib.patches import Polygon
+<pre><code>from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import PathPatch
         
@@ -231,7 +224,6 @@ ax.add_collection(PatchCollection(patches,
                                   alpha=0.5,
                                   zorder=1))
 </code></pre>
-</div>
 
 <p><img src="/assets/tutorial_15_0.png" alt="png" /></p>
 

@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://maxberggren.se/2016/07/14/atomic-parts-of-town-names/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
-  
+
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
 
@@ -95,22 +95,21 @@
   </header>
 
   <article class="post-content">
-    <p>Many towns in Sweden share the same atomic parts in their names. <code class="highlighter-rouge">-hult</code> is common in Småland <code class="highlighter-rouge">-arp</code> is common in Skåne. I got curious of how they cluster geographically. Let’s load up a <code class="highlighter-rouge">DataFrame</code> with the <a href="/assets/swe_towns_latlon.csv">positions of Swedish towns</a> that I made by querying Google for the position of every Swedish town I could find on Wikipedia.</p>
+    <p>Many towns in Sweden share the same atomic parts in their names. <code>-hult</code> is common in Småland <code>-arp</code> is common in Skåne. I got curious of how they cluster geographically. Let’s load up a <code>DataFrame</code> with the <a href="/assets/swe_towns_latlon.csv">positions of Swedish towns</a> that I made by querying Google for the position of every Swedish town I could find on Wikipedia.</p>
 
 <p>This notebook is also available as a <a href="https://gist.github.com/maxberggren/ccc0c9c3efd4b166ebbe4be9a4e54882">Jupyter Notebook here</a> if you want to execute the code yourself.</p>
 
 <p>Scroll past the code if you’re only here for the maps.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>import pandas as pd
+<pre><code>import pandas as pd
 
 df = pd.read_csv('swe_towns_latlon.csv', encoding='utf-8')
 df['town'] = df['town'].str.lower()
 </code></pre>
-</div>
 
 <p>And then do some crappy character n-gram extractions.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>def find_features(s):
+<pre><code>def find_features(s):
     feats = [s[i:i+7] for i in xrange(len(s)-6)] 
     feats += [s[i:i+6] for i in xrange(len(s)-5)] 
     feats += [s[i:i+5] for i in xrange(len(s)-4)] 
@@ -122,11 +121,10 @@ features = []
 for town in df['town'].values:
     features.extend(find_features(town))
 </code></pre>
-</div>
 
 <p>To be able to count the occurances.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>features = list(set(features))
+<pre><code>features = list(set(features))
 final_features = []
 occurances = []
 
@@ -142,19 +140,17 @@ df_features = pd.DataFrame({
     'occurances': occurances 
 })
 </code></pre>
-</div>
 
-<p>So now we get interesting parts of town names. Sanity check (at least if you’re Swedish) is that <code class="highlighter-rouge">sta</code>, <code class="highlighter-rouge">hult</code> and so on are present.</p>
+<p>So now we get interesting parts of town names. Sanity check (at least if you’re Swedish) is that <code>sta</code>, <code>hult</code> and so on are present.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>print ", ".join(df_features.sort('occurances', ascending=False).head(100)['feature'].values)
+<pre><code>print ", ".join(df_features.sort('occurances', ascending=False).head(100)['feature'].values)
 
 sta, tor, ing, erg, nge, orp,  oc,  och , och , och, ch ,  och, vik, torp, ra , ber, ors, berg, und, sjö, tra, and, str, näs, ter, inge, stra, tad, stad, den, for, fors, mar, ken, sto, olm, ste, äst, storp, stor, lla, lle, all, dal, hol, ngs, holm, äll, lst, tra , ång, ers, orr, stra , red, ran, nda, arp, ham, ill, est, ung, äck, ten, ster, gen, jör, rby, jär, nne, cke, ult, amm, mma, lin, sun, ryd, ack, sby, äng, eby, byn, len, lan, sund, ling, ker, nna, mmar, löv, lun, ike, bäck, bro, tan, nga, bäc, ård, rst, tte
 </code></pre>
-</div>
 
 <p>I went ahead and took out the ones I deemed interesting. Now let’s plot them to se how they group geographically.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>from mpl_toolkits.basemap import Basemap
+<pre><code>from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 rcParams['font.family'] = 'sans-serif'
@@ -206,90 +202,80 @@ plot({
     'holm': '#ff0000',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_10_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     'sta': '#ff00ff',
     'ing': '#00ffff',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_11_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     'hult': '#ffff00',
     'fors': '#00ff00',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_12_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     'vik': '#4f96c5',
     'torp': '#00ff00',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_13_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     u'näs': '#b15928',
     'ryd': '#08a060',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_14_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     'tuna': '#33cc33',
     'hammar': '#ff0066',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_15_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     u'köping': '#cc99ff',
     u'bruk': '#ffff00',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_16_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     'stor': '#00ccff',
     'sund': '#e3c471',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_17_0.png" alt="png" /></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     'stad': '#ffcc00',
     'berg': '#9933ff',
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_18_0.png" alt="png" /></p>
 
-<p><code class="highlighter-rouge">Berg</code> is really common in the old mining regions called Bergslagen.</p>
+<p><code>Berg</code> is really common in the old mining regions called Bergslagen.</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>plot({
+<pre><code>plot({
     u'ån': '#ffccff',
     u'ås': '#ee5657'
 })
 </code></pre>
-</div>
 
 <p><img src="/assets/towns-atomic-parts_20_0.png" alt="png" /></p>
 

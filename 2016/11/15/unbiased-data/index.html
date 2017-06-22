@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://maxberggren.se/2016/11/15/unbiased-data/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
-  
+
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
 
@@ -168,29 +168,27 @@
 
 <p>Now let’s create a Bayesian <a href="https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo">Markov chain Monte Carlo</a> model out of this. First let’s generate 1000 true votes.</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">pymc3</span> <span class="kn">as</span> <span class="nn">pm</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<pre><code class="language-python">import pymc3 as pm
+import numpy as np
 
-<span class="n">N</span> <span class="o">=</span> <span class="mi">1000</span>
-<span class="n">true_p</span> <span class="o">=</span> <span class="mf">0.6</span>
-<span class="n">true_votes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,),</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="o">-</span><span class="n">true_p</span><span class="p">,</span> <span class="n">true_p</span><span class="p">])</span>
+N = 1000
+true_p = 0.6
+true_votes = np.random.choice([0, 1], size=(N,), p=[1-true_p, true_p])
 </code></pre>
-</div>
 
-<p>The true votes is just an array looking something like <code class="highlighter-rouge">[1 0 1 0 1 1 1 ... 0 0 1 0 1 0]</code> with <code class="highlighter-rouge">N</code> entries. Given big enough <code class="highlighter-rouge">N</code> the percentage ones would be close to 60 % since that’s the percentage we choose for generating the random data.</p>
+<p>The true votes is just an array looking something like <code>[1 0 1 0 1 1 1 ... 0 0 1 0 1 0]</code> with <code>N</code> entries. Given big enough <code>N</code> the percentage ones would be close to 60 % since that’s the percentage we choose for generating the random data.</p>
 
 <p>Now starting from the true votes, we skew them in the same way as our algorithm would.</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">skewed_answers</span> <span class="o">=</span> <span class="n">true_votes</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">vote</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">skewed_answers</span><span class="p">):</span>
-    <span class="c"># If coin comes up heads - change answer</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">5</span><span class="p">,</span> <span class="o">.</span><span class="mi">5</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="c"># Change to random flip of second coin</span>
-        <span class="n">skewed_answers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="o">.</span><span class="mi">5</span><span class="p">,</span> <span class="o">.</span><span class="mi">5</span><span class="p">])</span>
+<pre><code class="language-python">skewed_answers = true_votes.copy()
+for i, vote in enumerate(skewed_answers):
+    # If coin comes up heads - change answer
+    if np.random.choice([0, 1], p=[.5, .5]) == 1:
+        # Change to random flip of second coin
+        skewed_answers[i] = np.random.choice([0, 1], p=[.5, .5])
 </code></pre>
-</div>
 
-<p>Obviously we would not know the true votes in a real life situation, only the <code class="highlighter-rouge">skewed_answers</code> that’s now been generated.</p>
+<p>Obviously we would not know the true votes in a real life situation, only the <code>skewed_answers</code> that’s now been generated.</p>
 
 <p>Now that we have synthetic data let’s build a model that infers the true votes. This is heavily inspired by chapter 2 in Cam Davidson-Pilon’s great book <a href="https://github.com/CamDavidsonPilon/Probabilistic-Programming-and-Bayesian-Methods-for-Hackers">Bayesian Methods for Hackers</a>.</p>
 
@@ -200,50 +198,48 @@
 
 <p>Now to the model</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
+<pre><code class="language-python">%matplotlib inline
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-<span class="k">with</span> <span class="n">pm</span><span class="o">.</span><span class="n">Model</span><span class="p">()</span> <span class="k">as</span> <span class="n">model</span><span class="p">:</span>
+with pm.Model() as model:
 
-    <span class="c"># Proportion Trump defined as between 0 and 1</span>
-    <span class="n">P_T</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="s">"prop_trump_votes"</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    # Proportion Trump defined as between 0 and 1
+    P_T = pm.Uniform("prop_trump_votes", 0, 1)
 
-    <span class="c"># Observed proportion follows this expression</span>
-    <span class="n">P_O</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Deterministic</span><span class="p">(</span>
-        <span class="s">"prop_skewed"</span><span class="p">,</span>
-        <span class="mf">0.5</span> <span class="o">*</span> <span class="n">P_T</span> <span class="o">+</span> <span class="mf">0.25</span><span class="p">)</span>
+    # Observed proportion follows this expression
+    P_O = pm.Deterministic(
+        "prop_skewed",
+        0.5 * P_T + 0.25)
 
-    <span class="c"># A Binomial generates ones and zeros</span>
-    <span class="n">T_O</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Binomial</span><span class="p">(</span>
-        <span class="s">"number_trump_votes"</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span>
-        <span class="n">P_O</span><span class="p">,</span> <span class="c"># by the observed probability</span>
-        <span class="n">observed</span><span class="o">=</span><span class="nb">sum</span><span class="p">(</span><span class="n">skewed_answers</span><span class="p">))</span>
-    <span class="c"># and we also gave it the observed skewed votes</span>
-    <span class="c"># so it know what to optimize for.</span>
+    # A Binomial generates ones and zeros
+    T_O = pm.Binomial(
+        "number_trump_votes", N,
+        P_O, # by the observed probability
+        observed=sum(skewed_answers))
+    # and we also gave it the observed skewed votes
+    # so it know what to optimize for.
 
-    <span class="c"># Now we run the inference</span>
-    <span class="n">step</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">Metropolis</span><span class="p">(</span><span class="nb">vars</span><span class="o">=</span><span class="p">[</span><span class="n">P_T</span><span class="p">])</span>
-    <span class="n">trace</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">40000</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span>
-    <span class="n">burned_trace</span> <span class="o">=</span> <span class="n">trace</span><span class="p">[</span><span class="mi">2500</span><span class="p">:]</span>
+    # Now we run the inference
+    step = pm.Metropolis(vars=[P_T])
+    trace = pm.sample(40000, step=step)
+    burned_trace = trace[2500:]
 
-<span class="c"># Visualizing the distribution of the true proportion P_T</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">distplot</span><span class="p">(</span>
-    <span class="n">burned_trace</span><span class="p">[</span><span class="s">"prop_trump_votes"</span><span class="p">],</span>
-    <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s">'Posterior distribution'</span><span class="p">)</span>
+# Visualizing the distribution of the true proportion P_T
+sns.distplot(
+    burned_trace["prop_trump_votes"],
+    bins=30, label='Posterior distribution')
 
-<span class="n">sns</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+sns.plt.xlim(0, 1)
+sns.plt.legend()
 </code></pre>
-</div>
 
-<div class="highlighter-rouge"><pre class="highlight"><code> [-----------------100%-----------------] 40000 of 40000 complete in 3.2 sec
+<pre><code> [-----------------100%-----------------] 40000 of 40000 complete in 3.2 sec
 </code></pre>
-</div>
 
 <p><img src="/assets/RRM2_7_2.png" alt="png" /></p>
 
-<p>As you can see it’s not a clear answer saying 60 % as in <code class="highlighter-rouge">true_p</code> like the data we generated. We get a <em>distribution</em> of where the true proportion Trump voters $P_T$ lies because</p>
+<p>As you can see it’s not a clear answer saying 60 % as in <code>true_p</code> like the data we generated. We get a <em>distribution</em> of where the true proportion Trump voters $P_T$ lies because</p>
 
 <ul>
   <li>our method/algorithm introduced noise in the data</li>

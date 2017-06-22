@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://maxberggren.se/2017/05/02/gender-bias/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
-  
+
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
 
@@ -97,91 +97,87 @@
   <article class="post-content">
     <p>Julia Silge recently <a href="http://juliasilge.com/blog/Gender-Pronouns/">wrote</a> a blog post about co-occurances of words together with gendered pronouns. This made me dig up some old code that did the same, but with the difference that it also extends to gendered names besides pronouns. The data is a corpus of Swedish news texts, and I’ve used name statistics from Sweden Statistics (SCB) to parse out what names are male and female.</p>
 
-<p>So let’s hack up a naive bookkeeping code to count all <a href="https://en.wikipedia.org/wiki/N-gram">bigrams</a> containing he/she/male_name/female_name. My corpus has already replaced all names with <code class="highlighter-rouge">female_name</code>/<code class="highlighter-rouge">male_name</code> since that’s what <a href="http://www.prognosis.se/">my gender monitor does</a>. I’ll use <code class="highlighter-rouge">textacy</code> for tokenization that uses the really fast <code class="highlighter-rouge">spaCy</code> behind the hoods. That said, this still takes some time to run. I did start to redo it in <code class="highlighter-rouge">dask</code>, but I realized that would take more time than to just let it run (see <a href="https://xkcd.com/1205/">appropiate xkcd</a>).</p>
+<p>So let’s hack up a naive bookkeeping code to count all <a href="https://en.wikipedia.org/wiki/N-gram">bigrams</a> containing he/she/male_name/female_name. My corpus has already replaced all names with <code>female_name</code>/<code>male_name</code> since that’s what <a href="http://www.prognosis.se/">my gender monitor does</a>. I’ll use <code>textacy</code> for tokenization that uses the really fast <code>spaCy</code> behind the hoods. That said, this still takes some time to run. I did start to redo it in <code>dask</code>, but I realized that would take more time than to just let it run (see <a href="https://xkcd.com/1205/">appropiate xkcd</a>).</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># For my unorthodox csv</span>
-<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">csv</span>
-<span class="n">csv</span><span class="o">.</span><span class="n">field_size_limit</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">maxsize</span><span class="p">)</span>
+<pre><code class="language-python"># For my unorthodox csv
+import sys, csv
+csv.field_size_limit(sys.maxsize)
 
-<span class="c"># A counter for female and male connections</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
-<span class="n">cnt</span> <span class="o">=</span> <span class="p">{</span><span class="s">'he'</span><span class="p">:</span> <span class="n">Counter</span><span class="p">(),</span> <span class="s">'she'</span><span class="p">:</span> <span class="n">Counter</span><span class="p">()}</span>
+# A counter for female and male connections
+from collections import Counter
+cnt = {'he': Counter(), 'she': Counter()}
 
-<span class="kn">import</span> <span class="nn">textacy</span>
-<span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">textacy</span><span class="o">.</span><span class="n">fileio</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">'news_corpus.csv'</span><span class="p">):</span>
+import textacy
+for d in textacy.fileio.read.read_csv('news_corpus.csv'):
 
-    <span class="c"># Extract tokens</span>
-    <span class="n">doc</span> <span class="o">=</span> <span class="n">textacy</span><span class="o">.</span><span class="n">Doc</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">lang</span><span class="o">=</span><span class="s">u'sv'</span><span class="p">)</span>
+    # Extract tokens
+    doc = textacy.Doc(d[0].lower(), lang=u'sv')
 
-    <span class="c"># Extract bigrams</span>
-    <span class="n">ngrams</span> <span class="o">=</span> <span class="n">textacy</span><span class="o">.</span><span class="n">extract</span><span class="o">.</span><span class="n">ngrams</span><span class="p">(</span>
-        <span class="n">doc</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-        <span class="n">filter_stops</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
-        <span class="n">filter_punct</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
-        <span class="n">filter_nums</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    # Extract bigrams
+    ngrams = textacy.extract.ngrams(
+        doc, n=2,
+        filter_stops=False,
+        filter_punct=False,
+        filter_nums=False)
 
-    <span class="c"># Bookkeeping for all bigram findings</span>
-    <span class="k">for</span> <span class="n">gram</span> <span class="ow">in</span> <span class="n">ngrams</span><span class="p">:</span>
+    # Bookkeeping for all bigram findings
+    for gram in ngrams:
 
-        <span class="n">t0</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">gram</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c"># First token in bigram</span>
-        <span class="n">t1</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">gram</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="c"># Second token in bigram</span>
+        t0 = str(gram[0]) # First token in bigram
+        t1 = str(gram[1]) # Second token in bigram
 
-        <span class="k">if</span> <span class="n">t0</span> <span class="o">==</span> <span class="s">'han'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'he'</span><span class="p">][</span><span class="n">t1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">elif</span> <span class="n">t1</span> <span class="o">==</span> <span class="s">'han'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'he'</span><span class="p">][</span><span class="n">t0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        if t0 == 'han':
+            cnt['he'][t1] += 1
+        elif t1 == 'han':
+            cnt['he'][t0] += 1
 
-        <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span> <span class="o">==</span> <span class="s">'male_name'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'he'</span><span class="p">][</span><span class="n">t1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">t1</span><span class="p">)</span> <span class="o">==</span> <span class="s">'male_name'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'he'</span><span class="p">][</span><span class="n">t0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        elif str(t0) == 'male_name':
+            cnt['he'][t1] += 1
+        elif str(t1) == 'male_name':
+            cnt['he'][t0] += 1
 
-        <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span> <span class="o">==</span> <span class="s">'hon'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'she'</span><span class="p">][</span><span class="n">t1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">t1</span><span class="p">)</span> <span class="o">==</span> <span class="s">'hon'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'she'</span><span class="p">][</span><span class="n">t0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        elif str(t0) == 'hon':
+            cnt['she'][t1] += 1
+        elif str(t1) == 'hon':
+            cnt['she'][t0] += 1
 
-        <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span> <span class="o">==</span> <span class="s">'female_name'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'she'</span><span class="p">][</span><span class="n">t1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">elif</span> <span class="nb">str</span><span class="p">(</span><span class="n">t1</span><span class="p">)</span> <span class="o">==</span> <span class="s">'female_name'</span><span class="p">:</span>
-            <span class="n">cnt</span><span class="p">[</span><span class="s">'she'</span><span class="p">][</span><span class="n">t0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        elif str(t0) == 'female_name':
+            cnt['she'][t1] += 1
+        elif str(t1) == 'female_name':
+            cnt['she'][t0] += 1
 </code></pre>
-</div>
 
-<p>Now <code class="highlighter-rouge">cnt['he']</code> and <code class="highlighter-rouge">cnt['she']</code> holds the frequencies for co-occurances of <em>he</em> and vice versa for <em>she</em>. But we want it to be in percent so we can compare. <a href="http://www.prognosis.se/">About 75 % of all mentions in news media are of males</a>, so we need to remove this bias to answer the question “How more often is word X used together with <em>he</em> rather than <em>she</em>”.</p>
+<p>Now <code>cnt['he']</code> and <code>cnt['she']</code> holds the frequencies for co-occurances of <em>he</em> and vice versa for <em>she</em>. But we want it to be in percent so we can compare. <a href="http://www.prognosis.se/">About 75 % of all mentions in news media are of males</a>, so we need to remove this bias to answer the question “How more often is word X used together with <em>he</em> rather than <em>she</em>”.</p>
 
 <p>So let’s transform to percent and throw away some of the long tail to remove noise (keeping everything under percentile 95).</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<pre><code class="language-python">import pandas as pd
+import numpy as np
 </code></pre>
-</div>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">he</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
-    <span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">cnt</span><span class="p">[</span><span class="s">'he'</span><span class="p">],</span> <span class="n">orient</span><span class="o">=</span><span class="s">'index'</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s">'he'</span><span class="p">})</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">he</span> <span class="o">&gt;</span> <span class="n">d</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="o">.</span><span class="mi">95</span><span class="p">)[</span><span class="s">'he'</span><span class="p">]])</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="o">/</span><span class="n">d</span><span class="o">.</span><span class="nb">sum</span><span class="p">())</span>
-    <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s">'he'</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-<span class="p">)</span>
+<pre><code class="language-python">he = (
+    pd.DataFrame()
+    .from_dict(cnt['he'], orient='index')
+    .rename(columns={0: 'he'})
+    .pipe(lambda d: d[d.he &gt; d.quantile(.95)['he']])
+    .pipe(lambda d: d/d.sum())
+    .sort_values('he', ascending=False)
+)
 
-<span class="n">she</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
-    <span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">cnt</span><span class="p">[</span><span class="s">'she'</span><span class="p">],</span> <span class="n">orient</span><span class="o">=</span><span class="s">'index'</span><span class="p">)</span>
-    <span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s">'she'</span><span class="p">})</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">she</span> <span class="o">&gt;</span> <span class="n">d</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="o">.</span><span class="mi">95</span><span class="p">)[</span><span class="s">'she'</span><span class="p">]])</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="o">/</span><span class="n">d</span><span class="o">.</span><span class="nb">sum</span><span class="p">())</span>
-    <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s">'she'</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-<span class="p">)</span>
+she = (
+    pd.DataFrame()
+    .from_dict(cnt['she'], orient='index')
+    .rename(columns={0: 'she'})
+    .pipe(lambda d: d[d.she &gt; d.quantile(.95)['she']])
+    .pipe(lambda d: d/d.sum())
+    .sort_values('she', ascending=False)
+)
 </code></pre>
-</div>
 
 <p>For the male connected words that’s,</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">he</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<pre><code class="language-python">he.head(5)
 </code></pre>
-</div>
 
 <div>
 <table border="1" class="dataframe">
@@ -218,9 +214,8 @@
 
 <p>and for female connected words,</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">she</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<pre><code class="language-python">she.head(5)
 </code></pre>
-</div>
 
 <div>
 <table border="1" class="dataframe">
@@ -257,28 +252,26 @@
 
 <p>holding what we are interested in. Except the punctuation, and also some emails.</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">odds</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="c"># Joining</span>
-    <span class="n">he</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">she</span><span class="p">,</span> <span class="n">left_index</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">right_index</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="c"># Calc logodds</span>
-    <span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">logodds</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s">'she'</span><span class="p">]</span> <span class="o">/</span> <span class="n">r</span><span class="p">[</span><span class="s">'he'</span><span class="p">]))</span>
-    <span class="c"># Removing punctuation</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="n">d</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="nb">len</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">])</span>
-    <span class="c"># Removing emails</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="o">~</span><span class="n">d</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="s">'@'</span><span class="p">)])</span>
-    <span class="o">.</span><span class="n">pipe</span><span class="p">(</span><span class="k">lambda</span> <span class="n">d</span><span class="p">:</span> <span class="n">d</span><span class="p">[</span><span class="o">~</span><span class="n">d</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="s">'kundservice'</span><span class="p">)])</span>
-    <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s">'logodds'</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-<span class="p">)</span>
+<pre><code class="language-python">odds = (
+    # Joining
+    he.merge(she, left_index=True, right_index=True)
+    # Calc logodds
+    .assign(logodds=lambda r: np.log2(r['she'] / r['he']))
+    # Removing punctuation
+    .pipe(lambda d: d[d.index.str.len() &gt; 1])
+    # Removing emails
+    .pipe(lambda d: d[~d.index.str.contains('@')])
+    .pipe(lambda d: d[~d.index.str.contains('kundservice')])
+    .sort_values('logodds', ascending=True)
+)
 </code></pre>
-</div>
 
-<p>Now let’s compare the ratios to find out what words are more used in connection to <code class="highlighter-rouge">she</code> and female names. We do this by joining/merging the <code class="highlighter-rouge">he</code> and <code class="highlighter-rouge">she</code> <code class="highlighter-rouge">DataFrame</code>s. Taking the log of this ratio conviniently centers the bias around zero – positive meaning skewed towards females and negative towards male.</p>
+<p>Now let’s compare the ratios to find out what words are more used in connection to <code>she</code> and female names. We do this by joining/merging the <code>he</code> and <code>she</code> <code>DataFrame</code>s. Taking the log of this ratio conviniently centers the bias around zero – positive meaning skewed towards females and negative towards male.</p>
 
 <h2 id="most-male-connected">Most male connected</h2>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">odds</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s">'logodds &lt; 0'</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+<pre><code class="language-python">odds.query('logodds &lt; 0').head(50)
 </code></pre>
-</div>
 
 <div>
 <table border="1" class="dataframe">
@@ -449,9 +442,8 @@
 
 <h2 id="most-female-connected">Most female connected</h2>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">odds</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s">'logodds &gt; 0'</span><span class="p">)</span><span class="o">.</span><span class="n">tail</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+<pre><code class="language-python">odds.query('logodds &gt; 0').tail(50)
 </code></pre>
-</div>
 
 <div>
 <table border="1" class="dataframe">
@@ -728,51 +720,50 @@
 
 <h2 id="pick-out-the-most-skewed-words-for-plotting">Pick out the most skewed words for plotting</h2>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">headsntails</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span>
-    <span class="n">odds</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s">'logodds &lt; 0'</span><span class="p">),</span>
-    <span class="n">odds</span><span class="o">.</span><span class="n">tail</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s">'logodds &gt; 0'</span><span class="p">)</span>
-<span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<pre><code class="language-python">headsntails = pd.concat([
+    odds.head(30).query('logodds &lt; 0'),
+    odds.tail(30).query('logodds &gt; 0')
+], axis=0)
 
-<span class="c"># Some styling</span>
-<span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
-<span class="o">%</span><span class="n">config</span> <span class="n">InlineBackend</span><span class="o">.</span><span class="n">figure_formats</span> <span class="o">=</span> <span class="p">{</span><span class="s">'png'</span><span class="p">,</span> <span class="s">'retina'</span><span class="p">}</span>
-<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_palette</span><span class="p">(</span><span class="s">"Paired"</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="o">.</span><span class="mi">75</span><span class="p">)</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="s">"notebook"</span><span class="p">,</span> <span class="n">font_scale</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span> <span class="n">rc</span><span class="o">=</span><span class="p">{</span><span class="s">"lines.linewidth"</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">})</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s">"whitegrid"</span><span class="p">)</span>
-<span class="n">custom_style</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s">'grid.color'</span><span class="p">:</span> <span class="s">'0.7'</span><span class="p">,</span>
-            <span class="s">'grid.linestyle'</span><span class="p">:</span> <span class="s">'--'</span><span class="p">,</span>
-            <span class="s">'grid.linewidth'</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
-<span class="p">}</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="n">custom_style</span><span class="p">)</span>
+# Some styling
+%matplotlib inline
+%config InlineBackend.figure_formats = {'png', 'retina'}
+import seaborn as sns
+import matplotlib.pyplot as plt
+sns.set_palette("Paired", 15, .75)
+sns.set_context("notebook", font_scale=1.2, rc={"lines.linewidth": 1.2})
+sns.set_style("whitegrid")
+custom_style = {
+            'grid.color': '0.7',
+            'grid.linestyle': '--',
+            'grid.linewidth': 0.5,
+}
+sns.set_style(custom_style)
 
-<span class="n">f</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
-<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s">'utf-8'</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">headsntails</span><span class="p">[</span><span class="s">'logodds'</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">headsntails</span><span class="p">[</span><span class="s">'logodds'</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+f, ax = plt.subplots(figsize=(8, 12))
+x = [s.decode('utf-8') for s in headsntails['logodds'].index]
+y = headsntails['logodds'].values
 
-<span class="n">sns</span><span class="o">.</span><span class="n">barplot</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s">"RdBu_r"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+sns.barplot(y, x, palette="RdBu_r", ax=ax)
 
-<span class="n">labels</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s">'{}x'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">item</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
-    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_xticks</span><span class="p">()</span>
-<span class="p">]</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s">"Female usage"</span><span class="p">)</span>
+labels = [
+    '{}x'.format(round(2**item, 1))
+    for item in ax.get_xticks()
+]
+ax.set_xticklabels(labels)
+ax.set_xlabel("Female usage")
 
-<span class="k">for</span> <span class="n">bar</span> <span class="ow">in</span> <span class="n">ax</span><span class="o">.</span><span class="n">patches</span><span class="p">:</span>
-    <span class="n">smaller</span> <span class="o">=</span> <span class="mf">0.3</span>
-    <span class="n">height</span> <span class="o">=</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_height</span><span class="p">()</span>
-    <span class="n">bar</span><span class="o">.</span><span class="n">set_height</span><span class="p">(</span><span class="n">height</span><span class="o">*</span><span class="n">smaller</span><span class="p">)</span>
-    <span class="n">move</span> <span class="o">=</span> <span class="n">height</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">smaller</span><span class="p">)</span>
-    <span class="n">y</span> <span class="o">=</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_y</span><span class="p">()</span>
-    <span class="n">bar</span><span class="o">.</span><span class="n">set_y</span><span class="p">(</span><span class="n">y</span><span class="o">+</span><span class="n">move</span><span class="p">)</span>
+for bar in ax.patches:
+    smaller = 0.3
+    height = bar.get_height()
+    bar.set_height(height*smaller)
+    move = height*(1-smaller)
+    y = bar.get_y()
+    bar.set_y(y+move)
 
-<span class="c"># Finalize the plot</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">despine</span><span class="p">(</span><span class="n">offset</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+# Finalize the plot
+sns.despine(offset=5)
 </code></pre>
-</div>
 
 <p><img src="/assets/gender_4-svd_19_0.png" alt="png" /></p>
 

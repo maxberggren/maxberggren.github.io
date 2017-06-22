@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://maxberggren.se/2016/11/21/right-labels/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
-  
+
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
 
@@ -104,100 +104,96 @@
 <p><img src="/assets/good.png" width="95%" /></p>
 <h6 id="now-easy-to-mentally-connect-line-with-label">Now easy to mentally connect line with label</h6>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
-<span class="o">%</span><span class="n">config</span> <span class="n">InlineBackend</span><span class="o">.</span><span class="n">figure_formats</span> <span class="o">=</span> <span class="p">{</span><span class="s">'png'</span><span class="p">,</span> <span class="s">'retina'</span><span class="p">}</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>  
-<span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>  
+<pre><code class="language-python">%matplotlib inline
+%config InlineBackend.figure_formats = {'png', 'retina'}
+import matplotlib.pyplot as plt  
+import seaborn as sns
+import pandas as pd  
 
-<span class="c"># I like my plots on a white background</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_context</span><span class="p">(</span><span class="s">"notebook"</span><span class="p">,</span> <span class="n">font_scale</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span> <span class="n">rc</span><span class="o">=</span><span class="p">{</span><span class="s">"lines.linewidth"</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">})</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s">"whitegrid"</span><span class="p">)</span>
-<span class="n">custom_style</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s">'grid.color'</span><span class="p">:</span> <span class="s">'0.8'</span><span class="p">,</span>
-            <span class="s">'grid.linestyle'</span><span class="p">:</span> <span class="s">'--'</span><span class="p">,</span>
-            <span class="s">'grid.linewidth'</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
-<span class="p">}</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="n">custom_style</span><span class="p">)</span>    
+# I like my plots on a white background
+sns.set_context("notebook", font_scale=1.2, rc={"lines.linewidth": 1.2})
+sns.set_style("whitegrid")
+custom_style = {
+            'grid.color': '0.8',
+            'grid.linestyle': '--',
+            'grid.linewidth': 0.5,
+}
+sns.set_style(custom_style)    
 </code></pre>
-</div>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s">"https://raw.githubusercontent.com/maxberggren/legend-right/master/percent-bachelors-degrees-women-usa.csv"</span><span class="p">)</span>      
+<pre><code class="language-python">df = pd.read_csv("https://raw.githubusercontent.com/maxberggren/legend-right/master/percent-bachelors-degrees-women-usa.csv")      
 </code></pre>
-</div>
 
 <p>Here’s my function taking care of aligning the text to the lines.</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">def</span> <span class="nf">legend_positions</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-    <span class="s">""" Calculate position of labels to the right in plot... """</span>
-    <span class="n">positions</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">y</span><span class="p">:</span>    
-        <span class="n">positions</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span>    
+<pre><code class="language-python">def legend_positions(df, y):
+    """ Calculate position of labels to the right in plot... """
+    positions = {}
+    for column in y:    
+        positions[column] = df[column].values[-1] - 0.5    
 
-    <span class="k">def</span> <span class="nf">push</span><span class="p">():</span>
-        <span class="s">"""
+    def push():
+        """
         ...by puting them to the last y value and
         pushing until no overlap
-        """</span>
-        <span class="n">collisions</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">column1</span><span class="p">,</span> <span class="n">value1</span> <span class="ow">in</span> <span class="n">positions</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
-            <span class="k">for</span> <span class="n">column2</span><span class="p">,</span> <span class="n">value2</span> <span class="ow">in</span> <span class="n">positions</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">column1</span> <span class="o">!=</span> <span class="n">column2</span><span class="p">:</span>
-                    <span class="n">dist</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">value1</span><span class="o">-</span><span class="n">value2</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">dist</span> <span class="o">&lt;</span> <span class="mf">2.5</span><span class="p">:</span>
-                        <span class="n">collisions</span> <span class="o">+=</span> <span class="mi">1</span>
-                        <span class="k">if</span> <span class="n">value1</span> <span class="o">&lt;</span> <span class="n">value2</span><span class="p">:</span>
-                            <span class="n">positions</span><span class="p">[</span><span class="n">column1</span><span class="p">]</span> <span class="o">-=</span> <span class="o">.</span><span class="mi">1</span>
-                            <span class="n">positions</span><span class="p">[</span><span class="n">column2</span><span class="p">]</span> <span class="o">+=</span> <span class="o">.</span><span class="mi">1</span>
-                        <span class="k">else</span><span class="p">:</span>
-                            <span class="n">positions</span><span class="p">[</span><span class="n">column1</span><span class="p">]</span> <span class="o">+=</span> <span class="o">.</span><span class="mi">1</span>
-                            <span class="n">positions</span><span class="p">[</span><span class="n">column2</span><span class="p">]</span> <span class="o">-=</span> <span class="o">.</span><span class="mi">1</span>
-                        <span class="k">return</span> <span class="bp">True</span>
-    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
-        <span class="n">pushed</span> <span class="o">=</span> <span class="n">push</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">pushed</span><span class="p">:</span>
-            <span class="k">break</span>
+        """
+        collisions = 0
+        for column1, value1 in positions.iteritems():
+            for column2, value2 in positions.iteritems():
+                if column1 != column2:
+                    dist = abs(value1-value2)
+                    if dist &lt; 2.5:
+                        collisions += 1
+                        if value1 &lt; value2:
+                            positions[column1] -= .1
+                            positions[column2] += .1
+                        else:
+                            positions[column1] += .1
+                            positions[column2] -= .1
+                        return True
+    while True:
+        pushed = push()
+        if not pushed:
+            break
 
-    <span class="k">return</span> <span class="n">positions</span>
+    return positions
 </code></pre>
-</div>
 
 <p>And we are ready to plot!</p>
 
-<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">x</span> <span class="o">=</span> <span class="s">'Year'</span>
-<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="s">'Health Professions'</span><span class="p">,</span> <span class="s">'Public Administration'</span><span class="p">,</span> <span class="s">'Education'</span><span class="p">,</span>
-     <span class="s">'Psychology'</span><span class="p">,</span> <span class="s">'Foreign Languages'</span><span class="p">,</span> <span class="s">'English'</span><span class="p">,</span>    
-     <span class="s">'Art and Performance'</span><span class="p">,</span> <span class="s">'Biology'</span><span class="p">,</span> <span class="s">'Agriculture'</span><span class="p">,</span>    
-     <span class="s">'Social Sciences and History'</span><span class="p">,</span> <span class="s">'Business'</span><span class="p">,</span> <span class="s">'Math and Statistics'</span><span class="p">,</span>    
-     <span class="s">'Architecture'</span><span class="p">,</span> <span class="s">'Computer Science'</span><span class="p">,</span> <span class="s">'Engineering'</span><span class="p">]</span>  
-<span class="n">positions</span> <span class="o">=</span> <span class="n">legend_positions</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<pre><code class="language-python">x = 'Year'
+y = ['Health Professions', 'Public Administration', 'Education',
+     'Psychology', 'Foreign Languages', 'English',    
+     'Art and Performance', 'Biology', 'Agriculture',    
+     'Social Sciences and History', 'Business', 'Math and Statistics',    
+     'Architecture', 'Computer Science', 'Engineering']  
+positions = legend_positions(df, y)
 
-<span class="n">f</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">11</span><span class="p">))</span>        
-<span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">get_cmap</span><span class="p">(</span><span class="s">'Paired'</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+f, ax = plt.subplots(figsize=(8,11))        
+cmap = plt.cm.get_cmap('Paired', len(y))
 
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">positions</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+for i, (column, position) in enumerate(positions.items()):
 
-    <span class="c"># Get a color</span>
-    <span class="n">color</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">positions</span><span class="p">))</span>
-    <span class="c"># Plot each line separatly so we can be explicit about color</span>
-    <span class="n">ax</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">column</span><span class="p">,</span> <span class="n">legend</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+    # Get a color
+    color = cmap(float(i)/len(positions))
+    # Plot each line separatly so we can be explicit about color
+    ax = df.plot(x=x, y=column, legend=False, ax=ax, color=color)
 
-    <span class="c"># Add the text to the right</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-        <span class="n">df</span><span class="p">[</span><span class="n">x</span><span class="p">][</span><span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">last_valid_index</span><span class="p">()]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
-        <span class="n">position</span><span class="p">,</span> <span class="n">column</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
-        <span class="n">color</span><span class="o">=</span><span class="n">color</span> <span class="c"># Same color as line</span>
-    <span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s">'Female bachelor degrees'</span><span class="p">)</span>
-<span class="c"># Add percent signs</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">([</span><span class="s">'{:3.0f}</span><span class="si">%</span><span class="s">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_yticks</span><span class="p">()])</span>
-<span class="n">sns</span><span class="o">.</span><span class="n">despine</span><span class="p">()</span>
+    # Add the text to the right
+    plt.text(
+        df[x][df[column].last_valid_index()] + 0.5,
+        position, column, fontsize=12,
+        color=color # Same color as line
+    )
+ax.set_ylabel('Female bachelor degrees')
+# Add percent signs
+ax.set_yticklabels(['{:3.0f}%'.format(x) for x in ax.get_yticks()])
+sns.despine()
 </code></pre>
-</div>
 
 <p><img src="/assets/legend-right_6_0.png" alt="png" /></p>
 
-<p>UPDATE: Thanks <a href="https://www.reddit.com/user/pybokeh"><code class="highlighter-rouge">/u/pybokeh</code></a> for fix allowing for varying length of columns and for tip on Python 3.X compability.</p>
+<p>UPDATE: Thanks <a href="https://www.reddit.com/user/pybokeh"><code>/u/pybokeh</code></a> for fix allowing for varying length of columns and for tip on Python 3.X compability.</p>
 
   </article>
 

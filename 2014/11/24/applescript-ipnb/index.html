@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link rel="canonical" href="http://maxberggren.se/2014/11/24/applescript-ipnb/">
   <link rel="alternate" type="application/atom+xml" title="MAX BERGGREN" href="http://maxberggren.se/feed.xml" />
-  
+
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
 
@@ -95,13 +95,13 @@
   </header>
 
   <article class="post-content">
-    <p>Here’s some AppleScript magic to have <code class="highlighter-rouge">.ipnb</code>-files runnable with a double click, like they should.</p>
+    <p>Here’s some AppleScript magic to have <code>.ipnb</code>-files runnable with a double click, like they should.</p>
 
 <ol>
   <li>
-    <p>Fire up <code class="highlighter-rouge">AppleScript Editor</code> (found in <code class="highlighter-rouge">/Applications/Utilities/</code>) and paste the following code:</p>
+    <p>Fire up <code>AppleScript Editor</code> (found in <code>/Applications/Utilities/</code>) and paste the following code:</p>
 
-    <div class="highlighter-rouge"><pre class="highlight"><code> on run
+    <pre><code> on run
  	set startPath to "" --change to your prefered path, mine was /Users/max/Dropbox/Dokument/Python
  	tell application "Terminal"
  		activate
@@ -121,20 +121,19 @@
  	end repeat
  end open
 </code></pre>
-    </div>
   </li>
-  <li>Save as a <code class="highlighter-rouge">program</code> preferably in your <code class="highlighter-rouge">/Applications/</code> folder.</li>
-  <li>Press <code class="highlighter-rouge">Cmd+i</code> on any <code class="highlighter-rouge">.ipnb</code>-file.</li>
-  <li>Under <code class="highlighter-rouge">Open with</code> select your created program.</li>
-  <li>Press <code class="highlighter-rouge">Change all...</code></li>
+  <li>Save as a <code>program</code> preferably in your <code>/Applications/</code> folder.</li>
+  <li>Press <code>Cmd+i</code> on any <code>.ipnb</code>-file.</li>
+  <li>Under <code>Open with</code> select your created program.</li>
+  <li>Press <code>Change all...</code></li>
   <li>Profit!?!?</li>
 </ol>
 
-<p>They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable <code class="highlighter-rouge">setPath</code> to something like <code class="highlighter-rouge">/Users/max/Dropbox/Dokument/Python</code> so you’re at your prefered path right from the start.</p>
+<p>They should now open in the browser. If you just want to start Ipython Notebook you can just double click it like any program (and of course put it in your dock). Be sure to set the variable <code>setPath</code> to something like <code>/Users/max/Dropbox/Dokument/Python</code> so you’re at your prefered path right from the start.</p>
 
-<p>And while we’re at it, here’s some code for a drag and drop AppleScript converting <code class="highlighter-rouge">.ipnb</code> to markdown <code class="highlighter-rouge">.md</code>:</p>
+<p>And while we’re at it, here’s some code for a drag and drop AppleScript converting <code>.ipnb</code> to markdown <code>.md</code>:</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>on open the_files
+<pre><code>on open the_files
    repeat with i from 1 to the count of the_files
    	tell application "Finder"
    		set filePath to POSIX path of (item i of the_files)
@@ -147,7 +146,6 @@
 	end repeat
 end open
 </code></pre>
-</div>
 
 
   </article>
