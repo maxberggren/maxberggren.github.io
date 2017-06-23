@@ -98,7 +98,7 @@ blockquote {
 code {
   padding: 1px 5px;
   background-color: #EDEDED;
-  font-size: 12.4px; }
+  font-size: 14.4px; }
 
 pre > code {
   font-size: 13.6px; }
@@ -171,6 +171,12 @@ th {
 
 tr:nth-child(even) {
   background-color: #f7f7f7; }
+
+.hljs {
+  padding: 1em !important; }
+
+code {
+  font-family: "Source Code Pro", monospace !important; }
 
 /**
  * Site header
@@ -340,6 +346,3 @@ tr:nth-child(even) {
     @media screen and (max-width: 650px) {
       .post-content h4 {
         font-size: 18px; } }
-
-.hljs {
-  padding: 1em !important; }
