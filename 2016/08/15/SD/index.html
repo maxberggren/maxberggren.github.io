@@ -16,7 +16,7 @@
   <!-- Font -->
   <link href='http://fonts.googleapis.com/css?family=Playfair+Display:400,700,900,400italic,700italic,900italic&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
   <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet">
-  
+
   <!-- Mathjax -->
   <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
@@ -32,7 +32,18 @@
 
   <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
-  <script>hljs.initHighlightingOnLoad();</script>
+  <script>
+
+    hljs.configure({
+      languages: [null]
+    })
+    hljs.initHighlightingOnLoad();
+
+  </script>
+
+
+
+
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/railscasts.min.css">
 
   <script>

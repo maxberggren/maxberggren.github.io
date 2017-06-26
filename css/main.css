@@ -173,7 +173,13 @@ tr:nth-child(even) {
   background-color: #f7f7f7; }
 
 .hljs {
-  padding: 1em !important; }
+  padding: 1em !important;
+  background: #ebebeb !important;
+  color: #2a2827 !important; }
+
+.language-python {
+  background: #232323 !important;
+  color: #e6e1dc !important; }
 
 code {
   font-family: "Source Code Pro", monospace !important; }
