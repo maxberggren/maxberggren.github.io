@@ -5,9 +5,233 @@
     <description></description>
     <link>http://maxberggren.se/</link>
     <atom:link href="http://maxberggren.se/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 01 Feb 2018 16:10:20 +0100</pubDate>
-    <lastBuildDate>Thu, 01 Feb 2018 16:10:20 +0100</lastBuildDate>
+    <pubDate>Fri, 07 Sep 2018 09:42:54 +0200</pubDate>
+    <lastBuildDate>Fri, 07 Sep 2018 09:42:54 +0200</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
+    
+      <item>
+        <title>Linguistic analysis of who wrote the op-ed</title>
+        <description>&lt;p&gt;&lt;a href=&quot;https://twitter.com/drob&quot;&gt;David Robinson&lt;/a&gt; did a nice &lt;a href=&quot;http://varianceexplained.org/r/op-ed-text-analysis/&quot;&gt;writeup&lt;/a&gt; of using his R package to analyze who wrote the  &lt;a href=&quot;https://www.nytimes.com/2018/09/05/opinion/trump-white-house-anonymous-resistance.html&quot;&gt;“I Am Part of the Resistance Inside the Trump Administration”&lt;/a&gt; op-ed in NYTimes. His approach was with TF-IDF of the words.&lt;/p&gt;
+
+&lt;p&gt;I wanted to try this with different text statsistics of the linguistic features instead, since I’m guessing word usage will not give the author away. And in Python of course.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import spacy
+import re
+
+import pandas as pd
+import numpy as np
+from textstat.textstat import textstat
+from twitter_scraper import get_tweets
+from sklearn.metrics.pairwise import cosine_similarity
+import seaborn as sns
+import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 180
+
+from spacy.attrs import ORTH
+
+pd.options.display.max_columns = 999
+pd.options.display.max_rows = 999
+nlp = spacy.load('en')
+
+article_text = &quot;President Trump is facing a test to his presidency unlike any faced by a modern American leader. It’s not just that the special counsel looms large. Or that the country is bitterly divided over Mr. Trump’s leadership. Or even that his party might well lose the House to an opposition hellbent on his downfall. The dilemma — which he does not fully grasp — is that many of the senior officials in his own administration are working diligently from within to frustrate parts of his agenda and his worst inclinations. I would know. I am one of them. To be clear, ours is not the popular “resistance” of the left. We want the administration to succeed and think that many of its policies have already made America safer and more prosperous. But we believe our first duty is to this country, and the president continues to act in a manner that is detrimental to the health of our republic. That is why many Trump appointees have vowed to do what we can to preserve our democratic institutions while thwarting Mr. Trump’s more misguided impulses until he is out of office. The root of the problem is the president’s amorality. Anyone who works with him knows he is not moored to any discernible first principles that guide his decision making. Although he was elected as a Republican, the president shows little affinity for ideals long espoused by conservatives: free minds, free markets and free people. At best, he has invoked these ideals in scripted settings. At worst, he has attacked them outright. In addition to his mass-marketing of the notion that the press is the “enemy of the people,” President Trump’s impulses are generally anti-trade and anti-democratic. Don’t get me wrong. There are bright spots that the near-ceaseless negative coverage of the administration fails to capture: effective deregulation, historic tax reform, a more robust military and more. But these successes have come despite — not because of — the president’s leadership style, which is impetuous, adversarial, petty and ineffective. From the White House to executive branch departments and agencies, senior officials will privately admit their daily disbelief at the commander in chief’s comments and actions. Most are working to insulate their operations from his whims. Meetings with him veer off topic and off the rails, he engages in repetitive rants, and his impulsiveness results in half-baked, ill-informed and occasionally reckless decisions that have to be walked back. “There is literally no telling whether he might change his mind from one minute to the next,” a top official complained to me recently, exasperated by an Oval Office meeting at which the president flip-flopped on a major policy decision he’d made only a week earlier. EDITORS’ PICKS The Flourishing Business of Fake YouTube Views The Iraqi Spy Who Infiltrated ISIS What Happens to #MeToo When a Feminist Is the Accused? The erratic behavior would be more concerning if it weren’t for unsung heroes in and around the White House. Some of his aides have been cast as villains by the media. But in private, they have gone to great lengths to keep bad decisions contained to the West Wing, though they are clearly not always successful. It may be cold comfort in this chaotic era, but Americans should know that there are adults in the room. We fully recognize what is happening. And we are trying to do what’s right even when Donald Trump won’t. The result is a two-track presidency. Take foreign policy: In public and in private, President Trump shows a preference for autocrats and dictators, such as President Vladimir Putin of Russia and North Korea’s leader, Kim Jong-un, and displays little genuine appreciation for the ties that bind us to allied, like-minded nations. Astute observers have noted, though, that the rest of the administration is operating on another track, one where countries like Russia are called out for meddling and punished accordingly, and where allies around the world are engaged as peers rather than ridiculed as rivals. On Russia, for instance, the president was reluctant to expel so many of Mr. Putin’s spies as punishment for the poisoning of a former Russian spy in Britain. He complained for weeks about senior staff members letting him get boxed into further confrontation with Russia, and he expressed frustration that the United States continued to impose sanctions on the country for its malign behavior. But his national security team knew better — such actions had to be taken, to hold Moscow accountable. This isn’t the work of the so-called deep state. It’s the work of the steady state. Given the instability many witnessed, there were early whispers within the cabinet of invoking the 25th Amendment, which would start a complex process for removing the president. But no one wanted to precipitate a constitutional crisis. So we will do what we can to steer the administration in the right direction until — one way or another — it’s over. The bigger concern is not what Mr. Trump has done to the presidency but rather what we as a nation have allowed him to do to us. We have sunk low with him and allowed our discourse to be stripped of civility. Senator John McCain put it best in his farewell letter. All Americans should heed his words and break free of the tribalism trap, with the high aim of uniting through our shared values and love of this great nation.&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Here’s a function that takes a arbritary text, and calculates various text statistics. Stuff like mean sentence lenght, variance in sentence lenght, different text difficulty measures from the &lt;code&gt;textstat&lt;/code&gt; package. And of course the usage of how much different part of speech is present through the package &lt;code&gt;Spacy&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def linguistic_features(text):
+    
+    &quot;&quot;&quot; Takes a text as input and returns various linguistic features of it &quot;&quot;&quot;
+    
+    doc = nlp(text)      
+    
+    # Some standard statistics
+    sent_lens = [len(s) for s in doc.sents]
+    mean_sentence_length = np.mean(sent_lens)
+    sentence_std = np.std(sent_lens)
+    counts = doc.count_by(ORTH)
+    n_sentences = len(list(doc.sents))
+    
+    def per_sentence(char):
+        &quot;&quot;&quot; Count occurances and divide by number of sentences &quot;&quot;&quot;
+        try:
+            return counts[doc.vocab.strings[char]] / n_sentences
+        except KeyError:
+            return 0.0
+    
+    all_caps_count = 0
+    pos_counts = {}
+    for token in doc:
+        # Count capitalized words
+        if token.text.isupper():
+            all_caps_count += 1
+        # Collect POS statistics
+        try:
+            pos_counts[token.pos_] += 1
+        except KeyError:
+            pos_counts[token.pos_] = 1
+    pos_per_sent = {f'{k}_per_sent': v / n_sentences for k, v in pos_counts.items()}
+    
+    return {
+        'flesch_reading_ease': textstat.flesch_reading_ease(text),
+        'smog_index': textstat.smog_index(text),
+        'flesch_kincaid_grade': textstat.flesch_kincaid_grade(text),
+        'coleman_liau_index': textstat.coleman_liau_index(text),
+        'dale_chall_readability_score': textstat.dale_chall_readability_score(text),
+        'difficult_words_per_sent': textstat.difficult_words(text) / n_sentences,
+        'linsear_write_formula': textstat.linsear_write_formula(text),
+        'dots_per_sent': per_sentence('.'),
+        'commas_per_sent': per_sentence(','),
+        'colons_per_sent': per_sentence(':'),
+        'bindings_per_sent': per_sentence('-'),
+        'long_bindings_per_sent': per_sentence('–'),
+        'quotes_per_sent': per_sentence('&quot;'),
+        'questions_per_sent': per_sentence('?'),
+        'exclamations_per_sent': per_sentence('!'),
+        'mean_sentence_length': mean_sentence_length,
+        'sentence_std': sentence_std,
+        'uppercase_words_per_sent': all_caps_count / n_sentences,
+        **pos_per_sent
+        
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In lack of time to find good text samples of the White House officials I’ve used their Twitter accounts. This is of course a stretch since there’s no guarrantees that the style you use on Twitter would match the style you use when writing an op-ed. But maybe, just maybe it matches enough?&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;# List of White House officials twitter accounts to examine
+wh_officials = [
+    'TomBossert45',
+    'jdgreenblatt45',
+    'VPComDir',
+    'SecPompeo',
+    'RajShah45',
+    'SecAzar',
+    'SecNielsen',
+    'USTradeRep',
+    'SecretarySonny',
+    'SecretaryRoss',
+    'OMBPress',
+    'EPAAWheeler',
+    'SecShulkin',
+    'SecretaryPerry',
+    'SecPriceMD',
+    'BetsyDeVosED',
+    'SecretaryCarson',
+    'SecretaryZinke',
+    'SecElaineChao',
+    'POTUS',
+    'SBALinda',
+    'SecretaryAcosta',
+    'Cabinet',
+    'VP',
+    'stevenmnuchin1',
+    'nikkihaley',
+    'realDonaldTrump',
+    'mike_pence',
+    'sendancoats',
+    'PressSec',
+    'GeneralJohnK',
+    'KellyannePolls',
+    'StephenMoore'
+]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We don’t need the urls.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def remove_urls(t):
+    return re.sub(r'https?:\/\/.*[\r\n]*', '', t, flags=re.MULTILINE)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Let’s take a twitter accounts collected text and chunk it. That way we can see if the similiarity is consistent by boostrapping some sort of confidence of the similarity.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def collect(user):
+    &quot;&quot;&quot; Collect text from twitter account &quot;&quot;&quot;
+    dump = &quot;&quot;
+    for tweet in get_tweets(user, pages=50):
+        try:
+            dump += ' ' + remove_urls(tweet['text'])
+        except:
+            continue
+            
+    return dump
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;def chunk(in_string, num_chunks):
+    &quot;&quot;&quot; Chunk a string onto `num_chunks` of equal size &quot;&quot;&quot;
+    chunk_size = len(in_string) // num_chunks
+    if len(in_string) % num_chunks: chunk_size += 1
+    iterator = iter(in_string)
+    for _ in range(num_chunks):
+        accumulator = list()
+        for _ in range(chunk_size):
+            try: accumulator.append(next(iterator))
+            except StopIteration: break
+        yield ''.join(accumulator)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now we are ready to collect and calculate all the statistics.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;data = {}
+for o in wh_officials:
+    print(o)
+    text = collect(o)
+    parts = list(chunk(text, 10))
+    
+    data[o + '_1'] = linguistic_features(parts[0])
+    data[o + '_2'] = linguistic_features(parts[1])
+    data[o + '_3'] = linguistic_features(parts[2])
+    data[o + '_4'] = linguistic_features(parts[3])
+    
+data['article'] = linguistic_features(article_text)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;df = pd.DataFrame.from_dict(data, orient='index').fillna(0.0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;There are many similarity measures but here, after min-max normalizing the features – I use cosine distance.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;similarities = (
+        pd.DataFrame(
+        # Cosine similarity of min-max normalized df
+        cosine_similarity((df - df.min()) / (df.max() - df.min())),
+        index=df.index,
+        columns=df.index
+    )[['article']]
+    .query('index != &quot;article&quot;')
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;ax = sns.barplot(
+    y=&quot;index&quot;, x=&quot;article&quot;,
+    data=(
+        similarities.reset_index()
+        .assign(index=lambda r: r['index'].str.split('_').str[0:-1].str.join('_'))
+    ),
+    order=(
+        similarities.reset_index()
+        .assign(index=lambda r: r['index'].str.split('_').str[0:-1].str.join('_'))
+        .groupby('index').median()
+        .reset_index()
+        .sort_values('article')
+    )['index']
+)
+ax.set(xlabel='Similarity to article style', ylabel='')
+sns.despine()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/lingu_analysis_17_1.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Dropping out of this is that most similar are &lt;a href=&quot;http://www.twitter.com/BetsyDeVosED&quot;&gt;BetsyDeVosED&lt;/a&gt;, &lt;a href=&quot;http://www.twitter.com/SecretaryCarson&quot;&gt;SecretaryCarson&lt;/a&gt;, &lt;a href=&quot;http://www.twitter.com/SecAzar&quot;&gt;SecAzar&lt;/a&gt;, &lt;a href=&quot;http://www.twitter.com/SecNielsen&quot;&gt;SecNielsen&lt;/a&gt;, &lt;a href=&quot;http://www.twitter.com/SecretarySonny&quot;&gt;SecretarySonny&lt;/a&gt;, and &lt;a href=&quot;http://www.twitter.com/VP&quot;&gt;VP Pence&lt;/a&gt;. I have no idea if this anywhere near the truth of course. As far as I’ve read, the only name of those that have been speculated is Pence.&lt;/p&gt;
+</description>
+        <pubDate>Fri, 07 Sep 2018 22:39:50 +0200</pubDate>
+        <link>http://maxberggren.se/2018/09/07/who-wrote-the-op-ed/</link>
+        <guid isPermaLink="true">http://maxberggren.se/2018/09/07/who-wrote-the-op-ed/</guid>
+        
+        <category>forensic</category>
+        
+        <category>lingustics</category>
+        
+        
+      </item>
     
       <item>
         <title>Mapping clustered websites</title>
@@ -3311,155 +3535,6 @@ plot({
         <category>equality,</category>
         
         <category>shamebot</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Working with maps in Python</title>
-        <description>&lt;p&gt;Kristoffer over at &lt;a href=&quot;http://rpsychologist.com&quot;&gt;rpsychologist.com&lt;/a&gt; wrote a &lt;a href=&quot;http://rpsychologist.com/working-with-shapefiles-projections-and-world-maps-in-ggplot&quot;&gt;really nice tutorial&lt;/a&gt; on getting up to speed with maps in R. It looked something like this.&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/tutorial_9_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Felt a little left out, so I decided to make a port in Python. You can follow along below or if you prefer this as an &lt;a href=&quot;https://gist.github.com/maxberggren/45904cab7550ba73fa03/5e698a92c9b538ab3fbcb85c6092af06e34bcc76&quot;&gt;Jupyter Notebook&lt;/a&gt; that you can download and run on our local machine.&lt;/p&gt;
-
-&lt;p&gt;To start with you need the packages &lt;code&gt;numpy&lt;/code&gt; and &lt;code&gt;matplotlib basemap&lt;/code&gt;. The latter should only be installed through &lt;a href=&quot;http://continuum.io/downloads&quot;&gt;Anaconda&lt;/a&gt; which is your, from here on, favorite Python package installer. So let’s load them up.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;import numpy as np
-import matplotlib.pyplot as plt
-%matplotlib inline
-from mpl_toolkits.basemap import Basemap
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Kristoffer favored the Winkel tripel projection since it’s adapted by the National Geographic Society. But since it’s unfortunaly not avalible in Basemap, we use Kavrayskiy 7 (&lt;code&gt;kav7&lt;/code&gt;), which is very very close. And by the way, Basemap supports 34 different projections so you will probably be able to find something that suits you.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;m = Basemap(resolution='c',
-            projection='kav7',
-            lat_0=0., # Center around
-            lon_0=0.) # lat 0, lon 0
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Kristoffer used graticlues (the grid) from a shapefile, &lt;code&gt;Basemap&lt;/code&gt; handles this for us so let’s prepare what it need.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;n_graticules = 18
-parallels = np.arange(-80., 90, n_graticules)
-meridians = np.arange(0., 360., n_graticules)
-lw = 1
-dashes = [5,7] # 5 dots, 7 spaces... repeat
-graticules_color = 'grey'
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;The rest should be quite self explainatory.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;fig1 = plt.figure(figsize=(16,20))
-fig1.patch.set_facecolor('#e6e8ec')
-ax = fig1.add_axes([0.1,0.1,0.8,0.8])
-
-m.drawmapboundary(color='white', 
-                  linewidth=0.0, 
-                  fill_color='white')
-m.drawparallels(parallels, 
-                linewidth=lw, 
-                dashes=dashes, 
-                color=graticules_color)
-m.drawmeridians(meridians, 
-                linewidth=lw, 
-                dashes=dashes, 
-                color=graticules_color)
-m.drawcoastlines(linewidth=0)
-m.fillcontinents('black', 
-                 lake_color='white')
-m.drawcountries(linewidth=1, 
-                linestyle='solid', 
-                color='white', 
-                zorder=30)
-
-title = plt.title('World map (Kavrayskiy 7)', 
-                  fontsize=20) 
-title.set_y(1.03) # Move the title a bit for niceness
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/tutorial_7_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Let’s add some shapefiles. Basemap does this nicely for us with &lt;code&gt;readshapefile&lt;/code&gt; and we use the same as Kristoffer found &lt;a href=&quot;http://www.naturalearthdata.com/downloads/110m-cultural-vectors/110m-populated-places/&quot;&gt;here&lt;/a&gt;. Since we named it &lt;code&gt;populated_places&lt;/code&gt;, &lt;code&gt;m.populated_places_info&lt;/code&gt; will hold all data. For some shapefiles this means statistics and all sorts of nice things so be sure to check &lt;code&gt;m.yourname_info&lt;/code&gt; out.&lt;/p&gt;
-
-&lt;p&gt;We use &lt;code&gt;m.scatter&lt;/code&gt; to make the bubble plot.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;m.readshapefile('shapefiles/ne_110m_populated_places/ne_110m_populated_places', 
-                name='populated_places', 
-                drawbounds=False, 
-                color='none')
-
-populations = [r['POP2000'] for r in m.populated_places_info]
-lats = [r['LATITUDE'] for r in m.populated_places_info]
-lons = [r['LONGITUDE'] for r in m.populated_places_info]
-x1, y1 = m(lons, lats) # Convert coords to projected place in figure
-m.scatter(x1, y1, 
-          s=np.array(populations)*0.05, 
-          marker=&quot;o&quot;, 
-          color='#32caf6',
-          zorder=10, 
-          alpha=0.8)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/tutorial_9_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;But most likely a shapefile will contain a shape that you want to put on your map. Let’s put out the borders of the tectonic plates on our map. The tectonic plate shapefile can be found &lt;a href=&quot;https://github.com/fraxen/tectonicplates&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;m.readshapefile('shapefiles/tectonicplates-master/PB2002_plates', 
-                name='tectonic_plates', 
-                drawbounds=True, 
-                color='red')
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/tutorial_11_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;But you’ll probably also want to have control over the settings of the shapes e.g. color the Australia plate in a different way&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;for info, shape in zip(m.tectonic_plates_info, 
-                       m.tectonic_plates):
-
-    if info['PlateName'] == &quot;Australia&quot;:
-        x, y = zip(*shape) 
-        m.plot(x, y, marker=None, color='b')
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/tutorial_13_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;And perhaps you also want to fill the patch.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import PathPatch
-        
-patches = []
-for info, shape in zip(m.tectonic_plates_info, 
-                       m.tectonic_plates):
-
-    if info['PlateName'] == &quot;Australia&quot;:
-        patches.append(Polygon(np.array(shape), True))
-        
-ax.add_collection(PatchCollection(patches, 
-                                  facecolor='#32caf6', 
-                                  edgecolor='none', 
-                                  linewidths=1., 
-                                  alpha=0.5,
-                                  zorder=1))
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;&lt;img src=&quot;/assets/tutorial_15_0.png&quot; alt=&quot;png&quot; /&gt;&lt;/p&gt;
-</description>
-        <pubDate>Tue, 04 Aug 2015 21:39:50 +0200</pubDate>
-        <link>http://maxberggren.se/2015/08/04/basemap/</link>
-        <guid isPermaLink="true">http://maxberggren.se/2015/08/04/basemap/</guid>
-        
-        <category>maps,</category>
-        
-        <category>python,</category>
-        
-        <category>matplotlib,</category>
-        
-        <category>basemap</category>
         
         
       </item>
